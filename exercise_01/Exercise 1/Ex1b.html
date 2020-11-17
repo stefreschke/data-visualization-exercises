@@ -1,19 +1,50 @@
 <!doctype html>
 
 <html>
-<head>
-	<title>Exercise 1, Part b</title>
-	<script src="https://d3js.org/d3.v5.min.js"></script>
-</head>
+    <head>
+        <title>Exercise 1, Part b</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+    </head>
+    
+    <body>
+        <svg height="900" id="chart" width="900"></svg>
+        <script>
 
-<body>
-	<svg id="chart" width="900" height="900"></svg>
-	<script>
-	//your code here
+            // adding color
+            colors = ['#ece7f2', '#023858']
 
-	
-	</script>
+            var myColor = d3.interpolate({colors: ["red", "blue"]}, {colors: ["white", "black"]});
 
-</body>
+
+
+            function getCol(origin, col) {
+                return origin.map(row => row[col]);
+            }
+
+            var MARGIN = 5
+            var BAR_HEIGHT = 30
+
+            d3.csv('Data/MarketCap.csv').then(function (dataArray) {
+                var maxRangeCapJan = Math.max.apply(null, getCol(dataArray, 'cap_jan'));
+                dataArray.sort((a, b) => {
+                    return a.cap_jan <= b.cap_jan
+                })
+                var ScaleX = d3.scaleLinear().domain([0, maxRangeCapJan]).range([0, 900])
+                d3.select('#chart')
+                    .selectAll('rect')
+                    .data(dataArray)
+                    .enter()
+                    .append('rect')
+                    .attr('x', 0)
+                    .attr('y', (d, i) => i * (BAR_HEIGHT + MARGIN))
+                    .attr('width', (d, i) => (ScaleX(d.cap_jan)))
+                    .attr('height', BAR_HEIGHT)
+                    .attr("fill", (d, i) => d3.interpolateBlues(d.cap_jan / maxRangeCapJan))
+            })
+        
+        
+        </script>
+    
+    </body>
 
 </html>

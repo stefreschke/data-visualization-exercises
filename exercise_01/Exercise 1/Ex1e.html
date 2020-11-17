@@ -26,14 +26,27 @@
             const textWidth = 100
 
             d3.csv('Data/MarketCap.csv').then(function (dataArray) {
-                var maxRangeCapJan = Math.max.apply(null, getCol(dataArray, 'cap_jan'));
+                // data manipulation
+                dataArray.forEach(el => {
+                    el["delta"] = (el["cap_nov"] - el["cap_jan"]) / el["cap_jan"];
+                })
+                let maxRangeCapJan = Math.max.apply(null, getCol(dataArray, 'cap_jan'));
+                let maxRangeCapNov = Math.max.apply(null, getCol(dataArray, 'cap_nov'));
+
+                let maxDelta = Math.max.apply(null, getCol(dataArray, 'delta'));
+                let minDelta = Math.min.apply(null, getCol(dataArray, 'delta'));
+                dataArray.forEach(el => {
+                    el["delta_normed"] = (el["delta"] - minDelta) / (maxDelta - minDelta);
+                })
                 dataArray.sort((a, b) => {
                     return a.cap_jan <= b.cap_jan
                 })
-                var ScaleX = d3.scaleLinear().domain([0, maxRangeCapJan]).range([0, svgAttr("width") - textWidth - MARGIN])
+
+                // data visualization
+                var ScaleX = (maxRange) => d3.scaleLinear().domain([0, maxRange]).range([0, svgAttr("width") - textWidth - MARGIN]);
                 const chart = d3.select('#chart')
                 const entries = chart
-                    .selectAll('.foo')
+                    .selectAll('foo')
                     .data(dataArray)
                     .enter()
 
@@ -42,7 +55,7 @@
                     .attr("class", "foo")
                     .attr('x', textWidth)
                     .attr('y', (d, i) => i * (BAR_HEIGHT + MARGIN))
-                    .attr('width', (d, i) => (ScaleX(d.cap_jan)))
+                    .attr('width', (d, i) => (ScaleX(maxRangeCapJan)(d.cap_jan)))
                     .attr('height', BAR_HEIGHT)
                     .attr("fill", (d, i) => d3.interpolateBlues(d.cap_jan / maxRangeCapJan))
 
@@ -53,10 +66,18 @@
                     .attr("x", 0)
                     .attr("y", (d, i) => i * (BAR_HEIGHT + MARGIN) + verticalTextOffSet)
 
-                const axis1 = d3.axisBottom().scale(ScaleX)
-                chart.append("g")
+                const axis1 = d3.axisBottom().scale(ScaleX(maxRangeCapJan))
+                chart.append("g").attr("id", "bottomScale")
                     .attr("transform", "translate(" + textWidth + "," + (dataArray.length * (BAR_HEIGHT + MARGIN)) + ")")
                     .call(axis1);
+
+                setTimeout(() => {
+                    chart.selectAll("rect").data(dataArray)
+                        .transition().duration(5000)
+                        .attr('width', (d, i) => (ScaleX(maxRangeCapNov)(d.cap_nov)))
+                        .attr("fill", (d, i) => d3.interpolateRdBu(d.delta_normed));
+                    chart.selectAll("#bottomScale").call(d3.axisBottom().scale(ScaleX(maxRangeCapNov)));
+                }, 1000)
             })
         </script>
     

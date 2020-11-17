@@ -29,13 +29,13 @@
                 dataArray.sort((a, b) => {
                     return a.cap_jan <= b.cap_jan
                 })
-                var ScaleX = d3.scaleLinear().domain([0, maxRangeCapJan]).range([0, svgAttr("width") - textWidth])
+                var ScaleX = d3.scaleLinear().domain([0, maxRangeCapJan]).range([0, svgAttr("width") - textWidth - MARGIN])
                 const chart = d3.select('#chart')
                 const entries = chart
                     .selectAll('.foo')
                     .data(dataArray)
                     .enter()
-
+				
                 const rectangles = entries
                     .append('rect')
                     .attr("class", "foo")
@@ -51,10 +51,12 @@
                     .attr("font-family", "sans-serif")
                     .attr("x", 0)
                     .attr("y", (d, i) => i * (BAR_HEIGHT + MARGIN) + verticalTextOffSet)
-
+				
+				const axis1 = d3.axisBottom().scale(ScaleX)
+				chart.append("g")
+						.attr("transform", "translate(" + textWidth + "," + (dataArray.length * (BAR_HEIGHT + MARGIN)) + ")")
+						.call(axis1);
             })
-        
-        
         </script>
     
     </body>

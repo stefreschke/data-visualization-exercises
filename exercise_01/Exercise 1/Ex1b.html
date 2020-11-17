@@ -9,18 +9,10 @@
     <body>
         <svg height="900" id="chart" width="900"></svg>
         <script>
-
-            // adding color
-            colors = ['#ece7f2', '#023858']
-
-            var myColor = d3.interpolate({colors: ["red", "blue"]}, {colors: ["white", "black"]});
-
-
-
             function getCol(origin, col) {
                 return origin.map(row => row[col]);
             }
-
+            
             var MARGIN = 5
             var BAR_HEIGHT = 30
 
@@ -41,8 +33,6 @@
                     .attr('height', BAR_HEIGHT)
                     .attr("fill", (d, i) => d3.interpolateBlues(d.cap_jan / maxRangeCapJan))
             })
-        
-        
         </script>
     
     </body>

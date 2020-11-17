@@ -1,19 +1,62 @@
 <!doctype html>
 
 <html>
-<head>
-	<title>Exercise 1, Part d</title>
-	<script src="https://d3js.org/d3.v5.min.js"></script>
-</head>
+    <head>
+        <title>Exercise 1, Part d</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+    </head>
+    
+    <body>
+        <svg height="900" id="chart" width="900"></svg>
+        <script>
+            var svgAttr = (s) => {
+                const svg = document.getElementById("chart")
+                return svg.attributes[s].value
+            }
 
-<body>
-	<svg id="chart" width="900" height="900"></svg>
-	<script>
-	//your code here
+            function getCol(origin, col) {
+                return origin.map(row => row[col]);
+            }
 
-	
-	</script>
+            const MARGIN = 5
+            const BAR_HEIGHT = 30
 
-</body>
+            const verticalTextOffSet = BAR_HEIGHT / 2 + 5
+            const textWidth = 100
+
+            d3.csv('Data/MarketCap.csv').then(function (dataArray) {
+                var maxRangeCapJan = Math.max.apply(null, getCol(dataArray, 'cap_jan'));
+                dataArray.sort((a, b) => {
+                    return a.cap_jan <= b.cap_jan
+                })
+                var ScaleX = d3.scaleLinear().domain([0, maxRangeCapJan]).range([0, svgAttr("width") - textWidth])
+                const chart = d3.select('#chart')
+                const entries = chart
+                    .selectAll('.foo')
+                    .data(dataArray)
+                    .enter()
+
+                const rectangles = entries
+                    .append('rect')
+                    .attr("class", "foo")
+                    .attr('x', textWidth)
+                    .attr('y', (d, i) => i * (BAR_HEIGHT + MARGIN))
+                    .attr('width', (d, i) => (ScaleX(d.cap_jan)))
+                    .attr('height', BAR_HEIGHT)
+                    .attr("fill", (d, i) => d3.interpolateBlues(d.cap_jan / maxRangeCapJan))
+
+                entries.append("text")
+                    .text((d) => d.company)
+                    .attr("class", "foo")
+                    .attr("font-family", "sans-serif")
+                    .attr("x", 0)
+                    .attr("y", (d, i) => i * (BAR_HEIGHT + MARGIN) + verticalTextOffSet)
+
+            })
+        
+        
+        </script>
+    
+    </body>
 
 </html>

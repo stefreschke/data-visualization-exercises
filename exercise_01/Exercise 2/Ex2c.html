@@ -18,10 +18,6 @@
     <body>
         <svg height="300" id="chart" width="500"/>
         <script>
-            // pls use a nice svg next time
-            // viewBoxes werden sich nicht durchsetzen
-
-
             function getCol(origin, col) {
                 return origin.map(row => row[col]);
             }
@@ -33,31 +29,58 @@
 
             d3.csv('Data/un_regions_gdp.csv').then(function (dataArray) {
                 dataArray = dataArray.filter((d) => d.GDP_2017 > 0 && d.HDI_2017 > 0)
-
+                let textHeightXAxis = 50;
+                let textWidthYAxis = 70;
                 let maxHDI = Math.max.apply(null, getCol(dataArray, 'HDI_2017'));
                 let maxGDP = Math.max.apply(null, getCol(dataArray, 'GDP_2017'));
+                let minGDP = Math.min.apply(null, getCol(dataArray, 'GDP_2017'));
+
                 const pointRadius = 1.5;
-
-
+                const chart = d3.select("#chart");
                 const scaleX = d3.scaleLinear()
                     .domain([0, maxHDI])
-                    .range([0, getSVGAttribute("width") - 2 * pointRadius]);
-                const scaleY = d3.scaleLinear()
-                    .domain([0, maxGDP])
-                    .range([getSVGAttribute("height") - 2 * pointRadius, 0]);
+                    .range([0, getSVGAttribute("width") - 2 * pointRadius - textWidthYAxis]);
+                const scaleY = d3.scaleSymlog()
+                    .domain([minGDP, maxGDP])
+                    .range([getSVGAttribute("height") - 2 * pointRadius - textHeightXAxis, 0]);
 
+                const xAxis = d3.axisBottom().scale(scaleX)
+                const yAxis = d3.axisLeft().scale(scaleY)
 
-                d3.select("#chart").append('g')
+                let paddingBetweenXAxisAndXAxisText = 30;
+                chart.append("text")
+                    .text("Human Development Index (HDI)")
+                    .attr("class", "label")
+                    .attr("x", (getSVGAttribute("width") - textWidthYAxis) / 2 + textWidthYAxis)
+                    .attr("y", getSVGAttribute("height") - textHeightXAxis + paddingBetweenXAxisAndXAxisText);
+
+                chart.append("text")
+                    .attr("transform", "translate(" + 20 + "," + (getSVGAttribute("height") - textHeightXAxis)/2 + ")rotate(-90)")
+                    .text("Gross Domestic Product (GDP)")
+                    .attr("class", "label");
+            
+                let colorScale = d3.scaleOrdinal().range(d3.schemeCategory10);
+                let colorValue = d => d.Continent;
+                chart.append('g')
                     .selectAll("circle")
                     .data(dataArray)
                     .enter()
                     .append("circle")
                     .attr("country", (d, i) => d.Country)
-                    .attr("cx", (d, i) => scaleX(d.HDI_2017) + pointRadius)
+                    .attr("cx", (d, i) => scaleX(d.HDI_2017) + pointRadius + textWidthYAxis)
                     .attr("cy", (d, i) => scaleY(d.GDP_2017) + pointRadius)
                     .attr("r", 1.5)
-                    .style("fill", d3.color("black"));
+                    .style("fill", (d, i) => colorScale(colorValue(d)));
+
+                chart.append("g").attr("id", "xAxis")
+                    .attr("transform", "translate(" + textWidthYAxis + "," + (getSVGAttribute("height") - textHeightXAxis - pointRadius) + ")")
+                    .call(xAxis);
+                chart.append("g").attr("id", "yAxis")
+                    .attr("transform", "translate(" + textWidthYAxis + "," + pointRadius + ")")
+                    .call(yAxis);
             });
+        
+        
         </script>
     </body>
 </html>

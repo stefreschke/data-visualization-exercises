@@ -45,8 +45,6 @@
                     .domain([minGDP, maxGDP])
                     .range([getSVGAttribute("height") - 2 * pointRadius - textHeightXAxis, 0]);
 
-                alert(scaleY(5000));
-
                 const xAxis = d3.axisBottom().scale(scaleX)
                 const yAxis = d3.axisLeft().scale(scaleY)
 

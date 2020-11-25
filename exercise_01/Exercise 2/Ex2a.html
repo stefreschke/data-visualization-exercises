@@ -1,26 +1,65 @@
 <!doctype html>
 <html>
-<head>
-    <title>Annual GDP compared to HDI (2017)</title>
-    <script src="https://d3js.org/d3.v5.min.js"></script>
-	<style>
-        text {
-            font-family: 'Yanone Kaffeesatz', sans-serif;
-            font-size: 7pt;
-        }
-        .label {
-            font-size: 9pt;
-            text-anchor: middle;
-        }
-    </style>
-</head>
-<svg width="100%" height="100%" viewBox="0 0 500 300"/>
-<body>
+    <head>
+        <title>Annual GDP compared to HDI (2017)</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <style>
+            text {
+                font-family: 'Yanone Kaffeesatz', sans-serif;
+                font-size: 7pt;
+            }
 
-<script>
-    //your code here
-	
+            .label {
+                font-size: 9pt;
+                text-anchor: middle;
+            }
+        </style>
+    </head>
+    <body>
+        <svg height="300" id="chart" width="500"/>
+        <script>
+            // pls use a nice svg next time
+            // viewBoxes werden sich nicht durchsetzen
 
-</script>
-</body>
+
+            function getCol(origin, col) {
+                return origin.map(row => row[col]);
+            }
+
+            var getSVGAttribute = (s) => {
+                const svg = document.getElementById("chart")
+                return svg.attributes[s].value
+            }
+
+            d3.csv('Data/un_regions_gdp.csv').then(function (dataArray) {
+                dataArray = dataArray.filter((d) => d.GDP_2017 > 0 && d.HDI_2017 > 0)
+
+                let maxHDI = Math.max.apply(null, getCol(dataArray, 'HDI_2017'));
+                let maxGDP = Math.max.apply(null, getCol(dataArray, 'GDP_2017'));
+                const pointRadius = 1.5;
+
+
+                const scaleX = d3.scaleLinear()
+                    .domain([0, maxHDI])
+                    .range([0, getSVGAttribute("width") - 2 * pointRadius]);
+                const scaleY = d3.scaleLinear()
+                    .domain([0, maxGDP])
+                    .range([getSVGAttribute("height") - 2 * pointRadius, 0]);
+
+
+                d3.select("#chart").append('g')
+                    .selectAll("circle")
+                    .data(dataArray)
+                    .enter()
+                    .append("circle")
+                    .attr("country", (d, i) => d.Country)
+                    .attr("cx", (d, i) => scaleX(d.HDI_2017) + pointRadius)
+                    .attr("cy", (d, i) => scaleY(d.GDP_2017) + pointRadius)
+                    .attr("r", 1.5)
+                    .style("fill", d3.color("black"));
+            });
+        
+        
+        </script>
+    </body>
 </html>

@@ -43,7 +43,9 @@
                 })
 
                 // data visualization
-                var ScaleX = (maxRange) => d3.scaleLinear().domain([0, maxRange]).range([0, svgAttr("width") - textWidth - MARGIN]);
+                var scaleX = d3.scaleLinear()
+                    .domain([0, Math.max(maxRangeCapJan, maxRangeCapNov)])
+                    .range([0, svgAttr("width") - textWidth - MARGIN]);
                 const chart = d3.select('#chart')
                 const entries = chart
                     .selectAll('foo')
@@ -55,7 +57,7 @@
                     .attr("class", "foo")
                     .attr('x', textWidth)
                     .attr('y', (d, i) => i * (BAR_HEIGHT + MARGIN))
-                    .attr('width', (d, i) => (ScaleX(maxRangeCapJan)(d.cap_jan)))
+                    .attr('width', (d, i) => scaleX(d.cap_jan))
                     .attr('height', BAR_HEIGHT)
                     .attr("fill", (d, i) => d3.interpolateBlues(d.cap_jan / maxRangeCapJan))
 
@@ -66,7 +68,7 @@
                     .attr("x", 0)
                     .attr("y", (d, i) => i * (BAR_HEIGHT + MARGIN) + verticalTextOffSet)
 
-                const axis1 = d3.axisBottom().scale(ScaleX(maxRangeCapJan))
+                const axis1 = d3.axisBottom().scale(scaleX)
                 chart.append("g").attr("id", "bottomScale")
                     .attr("transform", "translate(" + textWidth + "," + (dataArray.length * (BAR_HEIGHT + MARGIN)) + ")")
                     .call(axis1);
@@ -74,9 +76,8 @@
                 setTimeout(() => {
                     chart.selectAll("rect").data(dataArray)
                         .transition().duration(5000)
-                        .attr('width', (d, i) => (ScaleX(maxRangeCapNov)(d.cap_nov)))
+                        .attr('width', (d, i) => scaleX(d.cap_nov))
                         .attr("fill", (d, i) => d3.interpolateRdBu(d.delta_normed));
-                    chart.selectAll("#bottomScale").call(d3.axisBottom().scale(ScaleX(maxRangeCapNov)));
                 }, 1000)
             })
         </script>

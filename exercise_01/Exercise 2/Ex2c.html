@@ -40,7 +40,7 @@
                 const scaleX = d3.scaleLinear()
                     .domain([0, maxHDI])
                     .range([0, getSVGAttribute("width") - 2 * pointRadius - textWidthYAxis]);
-                const scaleY = d3.scaleSymlog()
+                const scaleY = d3.scaleLog()
                     .domain([minGDP, maxGDP])
                     .range([getSVGAttribute("height") - 2 * pointRadius - textHeightXAxis, 0]);
 

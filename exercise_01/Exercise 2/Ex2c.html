@@ -47,6 +47,12 @@
                 const xAxis = d3.axisBottom().scale(scaleX)
                 const yAxis = d3.axisLeft().scale(scaleY)
 
+                const legendXOffset = 80;
+                const legendYOffset = 10;
+                const legendBarHeight = 7;
+                const legendBarWidth = 20;
+                const legendInternalPadding = 2;
+
                 let paddingBetweenXAxisAndXAxisText = 30;
                 chart.append("text")
                     .text("Human Development Index (HDI)")
@@ -78,6 +84,31 @@
                 chart.append("g").attr("id", "yAxis")
                     .attr("transform", "translate(" + textWidthYAxis + "," + pointRadius + ")")
                     .call(yAxis);
+
+                uniqueColorValues = getCol(dataArray,"Continent").filter((value, index, self) =>
+                    self.indexOf(value) === index
+                  )
+
+                const legend = chart.append("g")
+                .selectAll("legend_entries")
+                .data(uniqueColorValues)
+                .enter()
+
+                legend
+                .append("rect")
+                    .attr("x", legendXOffset)
+                    .attr("y", (d,i) => legendYOffset + i * (legendBarHeight + legendInternalPadding))
+                    .attr("width", legendBarWidth)
+                    .attr("height", legendBarHeight)
+                    .attr("class", "legend_bar")
+                    .style("fill", (d,i) => colorScale(d))
+                
+                legend
+                .append("text")
+                    .attr("x", legendXOffset + legendBarWidth + legendInternalPadding)
+                    .attr("y", (d,i) => legendYOffset + i * (legendBarHeight + legendInternalPadding) + legendBarHeight)
+                    .attr("class", "legend_text")
+                    .text((d,i) => d)
             });
         
         

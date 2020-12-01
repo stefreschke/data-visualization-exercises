@@ -26,7 +26,7 @@
     </style>
 </head>
 <body>
-<svg id="chart" width="1000" height="600" viewBox="0 0 500 300"/>
+<svg id="chart" width="1000" height="600"/>
 <script>
     function getCol(origin, col) {
         return origin.map(row => row[col]);
@@ -37,8 +37,19 @@
         return svg.attributes[s].value
     }
 
+    // a = pi r²
+    const maxPointArea = getSVGAttribute("height") * 5;
+    function getRadius(value, maxPopulation) {
+        scaleFactor = maxPointArea / maxPopulation
+        radius = Math.sqrt(scaleFactor * value / Math.PI);
+        return radius;
+    }
+
     d3.csv('Data/un_regions_gdp.csv').then(function (dataArray) {
         dataArray = dataArray.filter((d) => d.GDP_2017 > 0 && d.HDI_2017 > 0)
+
+        const maxPopulation = Math.max.apply(null, getCol(dataArray,'Pop_2016'));
+
         let textHeightXAxis = 50;
         let textWidthYAxis = 70;
         let maxHDI = Math.max.apply(null, getCol(dataArray, 'HDI_2017'));
@@ -85,7 +96,7 @@
             .attr("country", (d, i) => d.Country)
             .attr("cx", (d, i) => scaleX(d.HDI_2017) + pointRadius + textWidthYAxis)
             .attr("cy", (d, i) => scaleY(d.GDP_2017) + pointRadius)
-            .attr("r", 1.5)
+            .attr("r", d => getRadius(d.Pop_2016, maxPopulation))
             .style("fill", (d, i) => colorScale(colorValue(d)));
 
         chart.append("g").attr("id", "xAxis")

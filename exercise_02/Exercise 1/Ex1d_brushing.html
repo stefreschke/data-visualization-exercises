@@ -75,7 +75,7 @@
             const pointRadius = 1.5;
 
             const legendXOffset = 80;
-            const legendYOffset = 10;
+            const legendYOffset = 30;
             const legendBarHeight = 15;
             const legendBarWidth = 40;
             const legendInternalPadding = 2;
@@ -95,24 +95,69 @@
                 .text("Gross Domestic Product (GDP)")
                 .attr("class", "label");
 
+            const xAxisDom = chart.append("g")
+                .attr("id", "xAxis")
+                .attr("transform", "translate(" + textWidthYAxis + "," + (getSVGAttribute("height") - textHeightXAxis - pointRadius) + ")")
+
+            const yAxisDom = chart.append("g")
+                .attr("id", "yAxis")
+                .attr("transform", "translate(" + textWidthYAxis + "," + pointRadius + ")")
             let colorScale = d3.scaleOrdinal().range(d3.schemeCategory10);
             let colorValue = d => d.Continent;
 
+            pointsWrapper = chart.append('g')
+            .attr("id", "dataArea")
+            .selectAll("g")
+            .data(dataArray)
+            .enter()
+
+            points = pointsWrapper
+                .append("g")
+                .attr("id", (d, i) => d.Country)
+                .attr("class", (d, i) => d.Continent.split(" ").join("") + " countryPoint")
+
+            const circles = points
+                .append("circle")
+                .attr("class", "circle")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", d => getRadius(d.Pop_2016, maxPopulation))
+                .style("fill", (d, i) => colorScale(colorValue(d)))
+
+            var transitionDuration = 0;
+
+            var brush = d3.brush();
+            var brushArea = d3.select("#dataArea");
+            var noOp = false;
+            var scaleX;
+            var scaleY;
             function brushHandler() {
 
-                selection = d3.brushSelection(this)
+                if(noOp) {
+                    noOp = false;
+                    return;
+                }
 
-                var scaleX;
-                var scaleY;
+                selection = d3.brushSelection(this)
+                const minXValue = pointRadius + textWidthYAxis;
+                const minYValue = pointRadius;
                 const maxXValue = getSVGAttribute("width") - 2 * pointRadius - textWidthYAxis - tooltipWidth;
                 const maxYValue = getSVGAttribute("height") - 2 * pointRadius - textHeightXAxis;
                 //Axis definition
                 if (selection != null) {
+                    selectionMinX = Math.max(selection[0][0], minXValue) - minXValue;
+                    selectionMaxX = Math.min(selection[1][0], maxXValue) - minXValue;
+                    selectionMinY = Math.max(selection[0][1], minYValue) - minYValue;
+                    selectionMaxY = Math.min(selection[1][1], maxYValue) - minYValue;
+                    domainMinX = scaleX.invert(selectionMinX)
+                    domainMaxX = scaleX.invert(selectionMaxX)
+                    domainMinY = scaleY.invert(selectionMinY)
+                    domainMaxY = scaleY.invert(selectionMaxY)
                     scaleX = d3.scaleLinear()
-                        .domain([0, maxHDI])
+                        .domain([domainMinX, domainMaxX])
                         .range([0, maxXValue]);
                     scaleY = d3.scaleLog()
-                        .domain([minGDP, maxGDP])
+                        .domain([domainMaxY, domainMinY])
                         .range([maxYValue, 0]);
                 } else {
                     scaleX = d3.scaleLinear()
@@ -126,37 +171,23 @@
                 const xAxis = d3.axisBottom().scale(scaleX)
                 const yAxis = d3.axisLeft().scale(scaleY)
 
-                pointsWrapper = chart.append('g')
-                .attr("id", "dataArea")
-                .selectAll("g")
-                .data(dataArray)
-                .enter()
-
-                points = pointsWrapper
-                    .append("g")
-                    .attr("id", (d, i) => d.Country)
-                    .attr("class", (d, i) => d.Continent.split(" ").join("") + " countryPoint")
+                //dataPoints
+                d3.select("#dataArea")
+                    .selectAll("g")
+                    .data(dataArray)
+                    .transition().duration(transitionDuration)
                     .attr("transform", (d, i) => `translate(${scaleX(d.HDI_2017) + pointRadius + textWidthYAxis},${scaleY(d.GDP_2017) + pointRadius})`);
 
-                // render circles for points
-                const circles = points
-                    .append("circle")
-                    .attr("class", "circle")
-                    .attr("cx", 0)
-                    .attr("cy", 0)
-                    .attr("r", d => getRadius(d.Pop_2016, maxPopulation))
-                    .style("fill", (d, i) => colorScale(colorValue(d)))
+                transitionDuration = 1000;
 
-                // render axis'
-                chart.append("g")
-                    .attr("id", "xAxis")
-                    .attr("transform", "translate(" + textWidthYAxis + "," + (getSVGAttribute("height") - textHeightXAxis - pointRadius) + ")")
-                    .call(xAxis);
+                // render axis
+                xAxisDom.call(xAxis);
+                yAxisDom.call(yAxis);
 
-                chart.append("g")
-                    .attr("id", "yAxis")
-                    .attr("transform", "translate(" + textWidthYAxis + "," + pointRadius + ")")
-                    .call(yAxis);
+                if (selection != null) {
+                    noOp = true;
+                    brushArea.call(brush.clear);
+                }
             }
 
             brushHandler();
@@ -230,6 +261,13 @@
                     self.indexOf(value) === index
                 )
 
+            chart
+                .append("text")
+                .attr("y", legendYOffset - legendBarHeight - legendInternalPadding)
+                .attr("x", legendXOffset)
+                .attr("class", "legend_text")
+                .text("Single click anywhere resets brush");
+                
             const legend = chart.append("g")
                 .selectAll("legend_entries")
                 .data(uniqueColorValues)
@@ -267,10 +305,7 @@
                 .on("mouseout", displayAllContinents);
 
 
-            d3.select("#dataArea")
-            .call(d3.brush()
-            .on("end", brushHandler));
-            
+            brushArea.call(brush.on("end", brushHandler));            
         });
     </script>
 </body>

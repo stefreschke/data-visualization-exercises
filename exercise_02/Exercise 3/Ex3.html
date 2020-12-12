@@ -9,7 +9,7 @@
 </style>
 
 <body>
-    <svg width="700" height="800">
+    <svg id="chart" width="700" height="800">
         <g></g>
     </svg>
 
@@ -30,37 +30,47 @@
                 tuple.niceDate = tuple.dateRep.split("/").reverse().join("-")
             });
             days = getUniqueValues(dataArray, "niceDate");
-            days.sort( (t1,t2) => {
+            days.sort((t1, t2) => {
                 return t1 >= t2;
             });
-            console.log(days)
             continents = getUniqueValues(dataArray, "continentExp");
-            continentDataArray = [];
 
-            //Init data structure
-            days.forEach(day => {
-                newObject = new Object();
-                newObject["day"] = day;
-                continents.forEach(continent => {
-                    newObject[continent] = 0;
-                });
-                continentDataArray.push(newObject);
-            });
+            function getContinentDataArray(column) {
+                continentDataArray = [];
 
-            //Fill with rum
-            continentDataArray.forEach(tuple => {
-                const filtered = dataArray.filter(value => {
-                    return value.niceDate == tuple.day;
+                //Init data structure
+                days.forEach(day => {
+                    newObject = new Object();
+                    newObject["day"] = day;
+                    continents.forEach(continent => {
+                        newObject[continent] = 0;
+                    });
+                    continentDataArray.push(newObject);
                 });
-                continents.forEach(continent => {
-                    const sumForContinent = filtered.filter(value => {
-                        return value.continentExp == continent;
-                    }).map(tuple => parseInt(tuple.cases)).reduce((t1, t2) => t1 + t2, 0);
-                    tuple[continent] += sumForContinent;
-                });
-            });
 
-            var yScale = d3.scaleLinear().domain([0, 1000000]).range([800, 0]);
+                //Fill with rum
+                continentDataArray.forEach(tuple => {
+                    const filtered = dataArray.filter(value => {
+                        return value.niceDate == tuple.day;
+                    });
+                    continents.forEach(continent => {
+                        const sumForContinent = filtered.filter(value => {
+                            return value.continentExp == continent;
+                        }).map(tuple => parseInt(tuple[column])).reduce((t1, t2) => t1 + t2, 0);
+                        tuple[continent] += sumForContinent;
+                    });
+                });
+
+                return continentDataArray;
+            }
+
+            var stack = d3.stack()
+                .keys(continents);
+
+            var showCases = true;
+            casesArray = stack(getContinentDataArray("cases"));
+            deathsArray = stack(getContinentDataArray("deaths"));
+            var yScale = d3.scaleLinear().domain([-10000, 10000]).range([800, 0]);
 
             var areaGenerator = d3.area()
                 .x(function (d, i) {
@@ -75,21 +85,41 @@
 
             var colors = d3.scaleOrdinal().range(d3.schemeCategory10);
 
-            var stack = d3.stack()
-                .keys(continents);
+            stackedChart =
+                d3.select('g')
+                    .selectAll('path')
+                    .data(casesArray)
+                    .enter()
 
-            var stackedSeries = stack(continentDataArray);
 
-            d3.select('g')
-                .selectAll('path')
-                .data(stackedSeries)
-                .enter()
+            stackedChart
                 .append('path')
                 .style('fill', function (d, i) {
                     return colors(i);
                 })
                 .attr('d', areaGenerator)
+
+            function getDataWithSwitch() {
+                showCases = !showCases;
+                if (showCases) {
+                    return casesArray;
+                } else {
+                    return deathsArray;
+                }
+            }
+            function transit() {
+                data = getDataWithSwitch()
+                stackedChart
+                .selectAll('path')
+                .data(data)
+                .transition()
+                .duration(3000)
+                .attr('d', areaGenerator);
+            }
+
+            d3.select("#chart").on("click", transit);
         });
+
 
     </script>
 </body>

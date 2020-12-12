@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+    <title>Stack generator</title>
+</head>
+
+<style>
+</style>
+
+<body>
+    <svg width="700" height="800">
+        <g></g>
+    </svg>
+
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+        function getCol(origin, col) {
+            return origin.map(row => row[col]);
+        }
+
+        function getUniqueValues(array, column) {
+            return getCol(array, column).filter((value, index, self) =>
+                self.indexOf(value) === index
+            );
+        }
+
+        d3.csv('Data/Covid19Worldwide.csv').then(function (dataArray) {
+            dataArray.forEach(tuple => {
+                tuple.niceDate = tuple.dateRep.split("/").reverse().join("-")
+            });
+            days = getUniqueValues(dataArray, "niceDate");
+            days.sort( (t1,t2) => {
+                return t1 >= t2;
+            });
+            console.log(days)
+            continents = getUniqueValues(dataArray, "continentExp");
+            continentDataArray = [];
+
+            //Init data structure
+            days.forEach(day => {
+                newObject = new Object();
+                newObject["day"] = day;
+                continents.forEach(continent => {
+                    newObject[continent] = 0;
+                });
+                continentDataArray.push(newObject);
+            });
+
+            //Fill with rum
+            continentDataArray.forEach(tuple => {
+                const filtered = dataArray.filter(value => {
+                    return value.niceDate == tuple.day;
+                });
+                continents.forEach(continent => {
+                    const sumForContinent = filtered.filter(value => {
+                        return value.continentExp == continent;
+                    }).map(tuple => parseInt(tuple.cases)).reduce((t1, t2) => t1 + t2, 0);
+                    tuple[continent] += sumForContinent;
+                });
+            });
+
+            var yScale = d3.scaleLinear().domain([0, 1000000]).range([800, 0]);
+
+            var areaGenerator = d3.area()
+                .x(function (d, i) {
+                    return i * 2;
+                })
+                .y0(function (d) {
+                    return yScale(d[0]);
+                })
+                .y1(function (d) {
+                    return yScale(d[1]);
+                });
+
+            var colors = d3.scaleOrdinal().range(d3.schemeCategory10);
+
+            var stack = d3.stack()
+                .keys(continents);
+
+            var stackedSeries = stack(continentDataArray);
+
+            d3.select('g')
+                .selectAll('path')
+                .data(stackedSeries)
+                .enter()
+                .append('path')
+                .style('fill', function (d, i) {
+                    return colors(i);
+                })
+                .attr('d', areaGenerator)
+        });
+
+    </script>
+</body>
+
+</html>

@@ -2,14 +2,20 @@
 <meta charset="utf-8">
 
 <head>
-    <title>Stack generator</title>
+    <title>COVID cases and deaths</title>
 </head>
 
 <style>
+    * {
+        font-family: sans-serif;
+    }
 </style>
 
 <body>
-    <svg id="chart" width="700" height="800">
+    <h1>COVID cases and deaths</h1>
+    <h2>Cummulated numbers for specified regions per day</h2>
+    <p>Click on the graph, to switch between cases and deaths</p>
+    <svg id="chart" width="1000" height="600">
         <g></g>
     </svg>
 
@@ -25,9 +31,20 @@
             );
         }
 
+        var getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
         d3.csv('Data/Covid19Worldwide.csv').then(function (dataArray) {
+
+            //Preprocessing
+            console.log("Starting preprocessing");
+
             dataArray.forEach(tuple => {
-                tuple.niceDate = tuple.dateRep.split("/").reverse().join("-")
+                tuple.niceDate = tuple.dateRep.split("/").reverse().join("-");
+                tuple.cases = Math.max(tuple.cases, 0);
+                tuple.deaths = Math.max(tuple.deaths, 0);
             });
             days = getUniqueValues(dataArray, "niceDate");
             days.sort((t1, t2) => {
@@ -35,6 +52,7 @@
             });
             continents = getUniqueValues(dataArray, "continentExp");
 
+            //Cummulate per Continent
             function getContinentDataArray(column) {
                 continentDataArray = [];
 
@@ -42,6 +60,7 @@
                 days.forEach(day => {
                     newObject = new Object();
                     newObject["day"] = day;
+                    newObject["total"] = 0;
                     continents.forEach(continent => {
                         newObject[continent] = 0;
                     });
@@ -58,38 +77,72 @@
                             return value.continentExp == continent;
                         }).map(tuple => parseInt(tuple[column])).reduce((t1, t2) => t1 + t2, 0);
                         tuple[continent] += sumForContinent;
+                        tuple["total"] += sumForContinent;
                     });
                 });
-
                 return continentDataArray;
             }
 
             var stack = d3.stack()
                 .keys(continents);
+            casesArray = getContinentDataArray("cases");
+            deathsArray = getContinentDataArray("deaths");
+            casesArrayStacked = stack(casesArray);
+            deathsArrayStacked = stack(deathsArray);
 
-            var showCases = true;
-            casesArray = stack(getContinentDataArray("cases"));
-            deathsArray = stack(getContinentDataArray("deaths"));
-            var yScale = d3.scaleLinear().domain([-10000, 10000]).range([800, 0]);
+            const chart = d3.select("#chart")
+            const chartWidth = getSVGAttribute("width");
+            const chartHeight = getSVGAttribute("height");
+            const textHeightXAxis = 50;
+            const textWidthYAxis = 70;
+            const pixelPerDay = ((chartWidth - textWidthYAxis) / days.length);
 
-            var areaGenerator = d3.area()
+            //axis
+            console.log("Defining axis");
+            const xAxisDom = chart.append("g")
+                .attr("id", "xAxis")
+                .attr("transform", "translate(" + textWidthYAxis + "," + (chartHeight - textHeightXAxis) + ")");
+
+            const yAxisDom = chart.append("g")
+                .attr("id", "yAxis")
+                .attr("transform", "translate(" + textWidthYAxis + ", 0)");
+
+            maxCasesPerDay = Math.max.apply(null, getCol(casesArray, "total"));
+            maxDeathsPerDay = Math.max.apply(null, getCol(deathsArray, "total"));
+            console.log(casesArray)
+
+            yScaleCases = d3.scaleLinear().domain([0, maxCasesPerDay]).range([chartHeight-textHeightXAxis, 0]);
+            yScaleDeaths = d3.scaleLinear().domain([0, maxDeathsPerDay]).range([chartHeight-textHeightXAxis, 0]);
+            xScale = d3.scaleTime().domain([new Date(days[0]), new Date(days[days.length - 1])]).range([0, days.length * pixelPerDay])
+
+            yAxisDom.call(d3.axisLeft().scale(yScaleCases));
+            xAxisDom.call(d3.axisBottom().scale(xScale))
+
+            //Draw chart
+            console.log("Drawing chart")
+
+            var showCases = true; //Switch
+
+            function getAreaGenerator(scaleToApply) {
+                return d3.area()
                 .x(function (d, i) {
-                    return i * 2;
+                    return i * pixelPerDay + textWidthYAxis;
                 })
                 .y0(function (d) {
-                    return yScale(d[0]);
+                    return scaleToApply(d[0])
                 })
                 .y1(function (d) {
-                    return yScale(d[1]);
+                    return scaleToApply(d[1]);
                 });
+            }
 
             var colors = d3.scaleOrdinal().range(d3.schemeCategory10);
 
             stackedChart =
                 d3.select('g')
                     .selectAll('path')
-                    .data(casesArray)
-                    .enter()
+                    .data(casesArrayStacked)
+                    .enter();
 
 
             stackedChart
@@ -97,24 +150,31 @@
                 .style('fill', function (d, i) {
                     return colors(i);
                 })
-                .attr('d', areaGenerator)
+                .attr('d', getAreaGenerator(yScaleCases));            
 
             function getDataWithSwitch() {
                 showCases = !showCases;
                 if (showCases) {
-                    return casesArray;
+                    return casesArrayStacked;
                 } else {
-                    return deathsArray;
+                    return deathsArrayStacked;
                 }
             }
             function transit() {
                 data = getDataWithSwitch()
+                if (showCases) {
+                    scaleToApply = yScaleCases;
+                    yAxisDom.call(d3.axisLeft().scale(yScaleCases));
+                } else {
+                    scaleToApply = yScaleDeaths;
+                    yAxisDom.call(d3.axisLeft().scale(yScaleDeaths));
+                }
                 stackedChart
                 .selectAll('path')
                 .data(data)
                 .transition()
                 .duration(3000)
-                .attr('d', areaGenerator);
+                .attr('d', getAreaGenerator(scaleToApply));
             }
 
             d3.select("#chart").on("click", transit);

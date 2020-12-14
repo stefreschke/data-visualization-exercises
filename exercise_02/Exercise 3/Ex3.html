@@ -82,12 +82,16 @@
                     newObject["day"] = day;
                     newObject["total"] = 0;
                     continents.forEach(continent => {
+                        //Africa, Oceania and Other have very low number -> combine them
+                        if (continent == "Africa" || continent == "Oceania") {
+                            return;
+                        }
                         newObject[continent] = 0;
                     });
                     continentDataArray.push(newObject);
                 });
 
-                //Fill with rum
+                //Fill with data
                 continentDataArray.forEach(tuple => {
                     const filtered = dataArray.filter(value => {
                         return value.niceDate == tuple.day;
@@ -96,7 +100,11 @@
                         const sumForContinent = filtered.filter(value => {
                             return value.continentExp == continent;
                         }).map(tuple => parseInt(tuple[column])).reduce((t1, t2) => t1 + t2, 0);
-                        tuple[continent] += sumForContinent;
+                        if (continent == "Africa" || continent == "Oceania") {
+                            tuple["Other"] += sumForContinent;
+                        } else {
+                            tuple[continent] += sumForContinent;
+                        }
                         tuple["total"] += sumForContinent;
                     });
                 });
@@ -159,7 +167,7 @@
 
             const legend = chart.append("g")
                 .selectAll("legend_entries")
-                .data(continents)
+                .data(["Asia", "Europe", "America", "Other"])
                 .enter()
 
             legend

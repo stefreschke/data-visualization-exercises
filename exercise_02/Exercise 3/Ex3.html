@@ -7,7 +7,27 @@
 
 <style>
     * {
-        font-family: sans-serif;
+        font-family: 'Yanone Kaffeesatz', sans-serif;
+    }
+
+    text {
+        font-size: 7pt;
+    }
+
+    .legend_text {
+        font-size: 12pt;
+        alignment-baseline: hanging;
+    }
+
+    .y-axis line,
+    .x-axis line {
+        stroke-width: .25;
+        stroke: rgba(114, 138, 74, 0.5);
+    }
+
+    .label {
+        font-size: 9pt;
+        text-anchor: middle;
     }
 </style>
 
@@ -94,7 +114,12 @@
             const chartWidth = getSVGAttribute("width");
             const chartHeight = getSVGAttribute("height");
             const textHeightXAxis = 50;
-            const textWidthYAxis = 70;
+            const textWidthYAxis = 95;
+            const legendXOffset = textWidthYAxis + 20;
+            const legendYOffset = 10;
+            const legendInternalPadding = 4;
+            const legendBarWidth = 10 * legendInternalPadding;
+            const legendBarHeight = 3 * legendInternalPadding;
             const pixelPerDay = ((chartWidth - textWidthYAxis) / days.length);
 
             //axis
@@ -111,46 +136,93 @@
             maxDeathsPerDay = Math.max.apply(null, getCol(deathsArray, "total"));
             console.log(casesArray)
 
-            yScaleCases = d3.scaleLinear().domain([0, maxCasesPerDay]).range([chartHeight-textHeightXAxis, 0]);
-            yScaleDeaths = d3.scaleLinear().domain([0, maxDeathsPerDay]).range([chartHeight-textHeightXAxis, 0]);
+            yScaleCases = d3.scaleLinear().domain([0, maxCasesPerDay]).range([chartHeight - textHeightXAxis, 0]);
+            yScaleDeaths = d3.scaleLinear().domain([0, maxDeathsPerDay]).range([chartHeight - textHeightXAxis, 0]);
             xScale = d3.scaleTime().domain([new Date(days[0]), new Date(days[days.length - 1])]).range([0, days.length * pixelPerDay])
 
-            yAxisDom.call(d3.axisLeft().scale(yScaleCases));
             xAxisDom.call(d3.axisBottom().scale(xScale))
+
+            chart.append("text")
+                .text("Date")
+                .attr("class", "label")
+                .attr("x", (chartWidth - textWidthYAxis) / 2 + textWidthYAxis)
+                .attr("y", chartHeight - textHeightXAxis + 40);
+
+            yAxisLabel = chart.append("text")
+                .attr("transform", "translate(" + 20 + "," + (chartHeight - textHeightXAxis) / 2 + ")rotate(-90)")
+                .attr("class", "label")
+
+                
+            //Legend
+
+            var colors = d3.scaleOrdinal().range(d3.schemeCategory10);
+
+            const legend = chart.append("g")
+                .selectAll("legend_entries")
+                .data(continents)
+                .enter()
+
+            legend
+                .append("rect")
+                .attr("x", legendXOffset)
+                .attr("y", (d, i) => legendYOffset + i * (legendBarHeight + legendInternalPadding))
+                .attr("width", legendBarWidth)
+                .attr("height", legendBarHeight)
+                .attr("class", "legend_bar")
+                .style("fill", (d, i) => colors(d))
+
+            legend
+                .append("text")
+                .attr("x", legendXOffset + legendBarWidth + legendInternalPadding)
+                .attr("y", (d, i) => legendYOffset + i * (legendBarHeight + legendInternalPadding) + legendBarHeight)
+                .attr("class", "legend_text")
+                .text((d, i) => d)
 
             //Draw chart
             console.log("Drawing chart")
 
             var showCases = true; //Switch
+            const transitionDuration = 3000;
 
             function getAreaGenerator(scaleToApply) {
                 return d3.area()
-                .x(function (d, i) {
-                    return i * pixelPerDay + textWidthYAxis;
-                })
-                .y0(function (d) {
-                    return scaleToApply(d[0])
-                })
-                .y1(function (d) {
-                    return scaleToApply(d[1]);
-                });
+                    .x(function (d, i) {
+                        return i * pixelPerDay + textWidthYAxis;
+                    })
+                    .y0(function (d) {
+                        return scaleToApply(d[0]);
+                    })
+                    .y1(function (d) {
+                        return scaleToApply(d[1]);
+                    });
             }
 
-            var colors = d3.scaleOrdinal().range(d3.schemeCategory10);
+            function setYAxis(duration=transitionDuration) {
+                if (showCases) {
+                    scaleToApply = yScaleCases;
+                    yAxisDom
+                        .transition()
+                        .duration(duration)
+                        .call(d3.axisLeft().scale(yScaleCases));
 
-            stackedChart =
-                d3.select('g')
-                    .selectAll('path')
-                    .data(casesArrayStacked)
-                    .enter();
+                    yAxisLabel
+                        .transition()
+                        .duration(duration)
+                        .text("Number of recorded COVID-19 cases")
+                    
+                } else {
+                    scaleToApply = yScaleDeaths;
+                    yAxisDom
+                        .transition()
+                        .duration(duration)
+                        .call(d3.axisLeft().scale(yScaleDeaths));
 
-
-            stackedChart
-                .append('path')
-                .style('fill', function (d, i) {
-                    return colors(i);
-                })
-                .attr('d', getAreaGenerator(yScaleCases));            
+                    yAxisLabel
+                        .transition()
+                        .duration(duration)
+                        .text("Number of recorded COVID-19 related deaths")
+                }
+            }
 
             function getDataWithSwitch() {
                 showCases = !showCases;
@@ -162,20 +234,30 @@
             }
             function transit() {
                 data = getDataWithSwitch()
-                if (showCases) {
-                    scaleToApply = yScaleCases;
-                    yAxisDom.call(d3.axisLeft().scale(yScaleCases));
-                } else {
-                    scaleToApply = yScaleDeaths;
-                    yAxisDom.call(d3.axisLeft().scale(yScaleDeaths));
-                }
+
+                setYAxis();
+
                 stackedChart
-                .selectAll('path')
-                .data(data)
-                .transition()
-                .duration(3000)
-                .attr('d', getAreaGenerator(scaleToApply));
+                    .selectAll('path')
+                    .data(data)
+                    .transition()
+                    .duration(transitionDuration)
+                    .attr('d', getAreaGenerator(scaleToApply));
             }
+
+            stackedChart =
+                d3.select('g')
+                    .selectAll('path')
+                    .data(casesArrayStacked)
+                    .enter();
+
+
+            stackedChart
+                .append('path')
+                .style('fill', (d,i) => colors(d.key))
+                .attr('d', getAreaGenerator(yScaleCases));
+
+            setYAxis(0);
 
             d3.select("#chart").on("click", transit);
         });

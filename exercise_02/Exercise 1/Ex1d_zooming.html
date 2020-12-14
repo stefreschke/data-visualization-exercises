@@ -51,8 +51,11 @@
             return svg.attributes[s].value
         }
 
+        const width = getSVGAttribute("width");
+        const height = getSVGAttribute("height");
+
         // a = pi r²
-        const maxPointArea = getSVGAttribute("height") * 6.93;
+        const maxPointArea = height * 6.93;
         function getRadius(value, maxPopulation) {
             scaleFactor = maxPointArea / maxPopulation
             radius = Math.sqrt(scaleFactor * value / Math.PI);
@@ -74,15 +77,15 @@
 
             const pointRadius = 1.5;
             const chart = d3.select("#chart");
-            const scaleX = d3.scaleLinear()
+            const x = d3.scaleLinear()
                 .domain([0, maxHDI])
-                .range([0, getSVGAttribute("width") - 2 * pointRadius - textWidthYAxis - tooltipWidth]);
-            const scaleY = d3.scaleLog()
+                .range([0, width - 2 * pointRadius - textWidthYAxis - tooltipWidth]);
+            const y = d3.scaleLog()
                 .domain([minGDP, maxGDP])
-                .range([getSVGAttribute("height") - 2 * pointRadius - textHeightXAxis, 0]);
+                .range([height - 2 * pointRadius - textHeightXAxis, 0]);
 
-            const xAxis = d3.axisBottom().scale(scaleX)
-            const yAxis = d3.axisLeft().scale(scaleY)
+            const xAxis = d3.axisBottom().scale(x)
+            const yAxis = d3.axisLeft().scale(y)
 
             const legendXOffset = 80;
             const legendYOffset = 10;
@@ -94,11 +97,11 @@
             chart.append("text")
                 .text("Human Development Index (HDI)")
                 .attr("class", "label")
-                .attr("x", (getSVGAttribute("width") - textWidthYAxis) / 2 + textWidthYAxis)
-                .attr("y", getSVGAttribute("height") - textHeightXAxis + paddingBetweenXAxisAndXAxisText);
+                .attr("x", (width - textWidthYAxis) / 2 + textWidthYAxis)
+                .attr("y", height - textHeightXAxis + paddingBetweenXAxisAndXAxisText);
 
             chart.append("text")
-                .attr("transform", "translate(" + 20 + "," + (getSVGAttribute("height") - textHeightXAxis) / 2 + ")rotate(-90)")
+                .attr("transform", "translate(" + 20 + "," + (height - textHeightXAxis) / 2 + ")rotate(-90)")
                 .text("Gross Domestic Product (GDP)")
                 .attr("class", "label");
 
@@ -106,6 +109,7 @@
             let colorValue = d => d.Continent;
 
             pointsWrapper = chart.append('g')
+                .attr("id", "wrapper")
                 .selectAll("g")
                 .data(dataArray)
                 .enter()
@@ -114,7 +118,7 @@
                 .append("g")
                 .attr("id", (d, i) => d.Country)
                 .attr("class", (d, i) => d.Continent.split(" ").join(""))
-                .attr("transform", (d, i) => `translate(${scaleX(d.HDI_2017) + pointRadius + textWidthYAxis},${scaleY(d.GDP_2017) + pointRadius})`);
+                .attr("transform", (d, i) => `translate(${x(d.HDI_2017) + pointRadius + textWidthYAxis},${y(d.GDP_2017) + pointRadius})`);
 
             // render circles for points
             const circles = points
@@ -127,7 +131,7 @@
             // render axis'
             chart.append("g")
                 .attr("id", "xAxis")
-                .attr("transform", "translate(" + textWidthYAxis + "," + (getSVGAttribute("height") - textHeightXAxis - pointRadius) + ")")
+                .attr("transform", "translate(" + textWidthYAxis + "," + (height - textHeightXAxis - pointRadius) + ")")
                 .call(xAxis);
 
             chart.append("g")
@@ -240,6 +244,23 @@
                 .on("mouseenter", d => displayOnlyContinent(d))
                 .on("mouseout", displayAllContinents);
 
+            var zoom = d3.zoom()
+                .scaleExtent([1, 10])
+                .translateExtent([[0,0], [width, height]])
+                .on("zoom", redraw);
+
+            chart.call(zoom);
+
+            function redraw() {
+                var transform = d3.event.transform;
+                const zx = transform.rescaleX(x).interpolate(d3.interpolateRound);
+                const zy = transform.rescaleY(y).interpolate(d3.interpolateRound);
+                chart.select("#xAxis").call(d3.axisBottom().scale(zx))
+                chart.select("#yAxis").call(d3.axisLeft().scale(zy))
+                points
+                    .attr("transform", (d, i) => `translate(${zx(d.HDI_2017) + pointRadius + textWidthYAxis},${zy(d.GDP_2017) + pointRadius})`);
+                circles.attr("r", d => transform.k * getRadius(d.Pop_2016, maxPopulation));
+            }
             
         });
     </script>

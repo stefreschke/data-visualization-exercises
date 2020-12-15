@@ -1,1 +1,184 @@
-// Your code here
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<style>
+    * {
+        font-family: 'Yanone Kaffeesatz', sans-serif;
+        font-size: 10pt;
+    }
+
+    h1 {
+        font-size: 24pt;
+    }
+</style>
+
+<body>
+    <h1>ETF turnover 2020</h1>
+    <svg id="chart" width="1000" height="500" />
+    <p>
+        Each bar represents the turnover over all ETFs in the specified month. <br>
+        Each section represents the individual turnover. (1 M€ = 1.000.000 €)
+    </p>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        const chart = d3.select("#chart")
+
+        function getCol(origin, col) {
+            return origin.map(row => row[col]);
+        }
+
+        function getUniqueValues(array, column) {
+            return getCol(array, column).filter((value, index, self) =>
+                self.indexOf(value) === index
+            );
+        }
+
+        const getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        d3.csv('Data/Turnover.csv').then(function (data) {
+
+            monthsArray = ['july', 'august', 'september', 'october'];
+            data.sort((t1, t2) => {
+                if (t1.month != t2.month) {
+                    return monthsArray.indexOf(t1.month) > monthsArray.indexOf(t2.month);
+                } else {
+                    return t1.etf > t2.etf;
+                }
+            });
+
+
+            etfs = getUniqueValues(data, "etf");
+            months = getUniqueValues(data, "month");
+
+            //Init data structure
+            transformedArray = []
+            months.forEach(month => {
+                newObject = new Object();
+                newObject["month"] = month;
+                newObject["total"] = 0;
+                etfs.forEach(etf => {
+                    newObject[etf] = 0;
+                });
+                transformedArray.push(newObject);
+            });
+
+            //Fill with data
+            transformedArray.forEach(tuple => {
+                const filtered = data.filter(value => {
+                    return value.month == tuple.month;
+                });
+                etfs.forEach(etf => {
+                    const etfValue = parseInt(
+                        filtered.filter(value => {
+                            return value.etf == etf;
+                        })[0].turnover);
+                    tuple[etf] = etfValue;
+                    tuple["total"] += etfValue;
+                });
+            });
+
+            //make stack
+            var dataStacked = d3.stack().keys(etfs)(transformedArray);
+
+            const width = getSVGAttribute("width");
+            const height = getSVGAttribute("height");
+            const textWidthYAxis = 100;
+            const textHeightXAxis = 50;
+            const spaceForLegend = 400;
+            const spacePerBar = (width - textWidthYAxis - spaceForLegend) / months.length;
+            const barPadding = 10;
+            const barWidth = spacePerBar - 2 * barPadding;
+
+            const legendXOffset = width - spaceForLegend + 30;
+            const legendYOffset = 10;
+            const legendBarHeight = 15;
+            const legendBarWidth = 40;
+            const legendInternalPadding = 3;
+
+            xValues = []
+            for (i = 0; i < months.length; i++) {
+                xValues[i] = i * spacePerBar + textWidthYAxis + barPadding
+            }
+
+            const xScale = d3.scaleOrdinal(xValues)
+                .domain(months)
+
+            const yScale = d3.scaleLinear()
+                .domain([0, Math.max.apply(null, getCol(transformedArray, 'total'))])
+                .range([height - textHeightXAxis, 0]);
+
+            const colorScale = d3.scaleOrdinal().range(d3.schemeTableau10);
+
+            console.log(dataStacked);
+
+            bar_elements = chart
+                .append("g")
+                .selectAll("bar_elements")
+                .data(dataStacked)
+                .enter()
+                .append("g")
+                .style("fill", d => colorScale(d.key));
+
+
+            bar_elements
+                .selectAll("rect")
+                .data(d => d)
+                .enter()
+                .append("rect")
+                .attr("x", d => xScale(d.data.month))
+                .attr("y", d => yScale(d[1]))
+                .attr("height", d => yScale(d[0]) - yScale(d[1]))
+                .attr("width", barWidth);
+
+            chart.append("g")
+                .attr("id", "yAxis")
+                .attr("transform", "translate(" + textWidthYAxis + "," + 0 + ")")
+                .call(d3.axisLeft().scale(yScale));
+
+            chart.append("g")
+                .attr("id", "xAxis")
+                .attr("transform", "translate(" + (textWidthYAxis - 50) + "," + (height - textHeightXAxis + 5) + ")")
+                .call(d3.axisBottom().scale(xScale));
+
+            const legend = chart.append("g")
+                .selectAll("legend_entries")
+                .data(dataStacked.reverse())
+                .enter()
+
+            legend
+                .append("rect")
+                .attr("x", legendXOffset)
+                .attr("y", (d, i) => legendYOffset + i * (height - textHeightXAxis) / etfs.length)
+                .attr("width", legendBarWidth)
+                .attr("height", legendBarHeight)
+                .attr("class", "legend_bar")
+                .style("fill", (d, i) => colorScale(d.key));
+
+            legend
+                .append("text")
+                .attr("x", legendXOffset + legendBarWidth + legendInternalPadding)
+                .attr("y", (d, i) => legendYOffset + i * (height - textHeightXAxis) / etfs.length + legendBarHeight)
+                .attr("class", "legend_text")
+                .text((d, i) => d.key);
+
+            chart.append("text")
+                .text("Month of 2020")
+                .attr("class", "label")
+                .attr("x", (width-spaceForLegend) / 2)
+                .attr("y", height - textHeightXAxis + 45);
+
+            chart.append("text")
+                .attr("transform", "translate(" + 30 + "," + (height - textHeightXAxis) / 2 + ")rotate(-90)")
+                .text("Turnover in million €")
+                .attr("class", "label");
+
+        });
+
+    </script>
+</body>
+
+</html>

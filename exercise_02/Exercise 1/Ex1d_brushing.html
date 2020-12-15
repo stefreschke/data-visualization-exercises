@@ -106,10 +106,10 @@
             let colorValue = d => d.Continent;
 
             pointsWrapper = chart.append('g')
-            .attr("id", "dataArea")
-            .selectAll("g")
-            .data(dataArray)
-            .enter()
+                .attr("id", "dataArea")
+                .selectAll("g")
+                .data(dataArray)
+                .enter()
 
             points = pointsWrapper
                 .append("g")
@@ -133,7 +133,7 @@
             var scaleY;
             function brushHandler() {
 
-                if(noOp) {
+                if (noOp) {
                     noOp = false;
                     return;
                 }
@@ -181,8 +181,14 @@
                 transitionDuration = 1000;
 
                 // render axis
-                xAxisDom.call(xAxis);
-                yAxisDom.call(yAxis);
+                xAxisDom
+                    .transition()
+                    .duration(transitionDuration)
+                    .call(xAxis);
+                yAxisDom
+                    .transition()
+                    .duration(transitionDuration)
+                    .call(yAxis);
 
                 if (selection != null) {
                     noOp = true;
@@ -267,7 +273,7 @@
                 .attr("x", legendXOffset)
                 .attr("class", "legend_text")
                 .text("Single click anywhere resets brush");
-                
+
             const legend = chart.append("g")
                 .selectAll("legend_entries")
                 .data(uniqueColorValues)
@@ -305,7 +311,7 @@
                 .on("mouseout", displayAllContinents);
 
 
-            brushArea.call(brush.on("end", brushHandler));            
+            brushArea.call(brush.on("end", brushHandler));
         });
     </script>
 </body>

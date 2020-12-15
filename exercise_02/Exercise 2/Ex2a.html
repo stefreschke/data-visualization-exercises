@@ -1,1 +1,120 @@
-//Your code here
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<style>
+    * {
+        font-family: 'Yanone Kaffeesatz', sans-serif;
+        font-size: 10pt;
+    }
+
+    h1 {
+        font-size: 24pt;
+    }
+</style>
+
+<body>
+    <h1>ETF turnover in october</h1>
+    <svg id="chart" width="1000" height="500" />
+    <p>
+        The slices represent the share of <b>ETF</b> on the whole turnover in <b>october, 2020</b>. <br>
+        The individual turnover is written inside the pies slices (1 M€ = 1.000.000 €).
+    </p>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        const chart = d3.select("#chart")
+        const wrapper = chart.append("g")
+
+        const getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        const width = getSVGAttribute("width");
+        const height = getSVGAttribute("height");
+        const radius = Math.min(width, height) / 2 - 10;
+
+        const legendXOffset = width / 2 + 50;
+        const legendYOffset = height / 2 - 100;
+        const legendBarHeight = 15;
+        const legendBarWidth = 40;
+        const legendInternalPadding = 2;
+
+        wrapper.attr("transform", "translate(" + (radius + 5) + "," + (radius + 5) + ")");
+
+
+
+        d3.csv('Data/Turnover.csv').then(function (data) {
+
+            const newData = data.filter(entry => entry.month == "october");
+
+            const colorValue = d => data[d.index].etf;
+            const labelName = d => data[d.index].turnover + " M€"
+            const colorScale = d3.scaleOrdinal().range(d3.schemeTableau10);
+
+
+            var color = d3.scaleOrdinal()
+                .domain(newData)
+                .range(d3.schemeSet2);
+
+            var pie = d3.pie()
+                .value(d => d.turnover)
+            var data_ready = pie(newData)
+
+            var arcGenerator = d3.arc()
+                .innerRadius(0)
+                .outerRadius(radius)
+
+            var textArcGenerator = d3.arc()
+                .innerRadius(radius * 0.65433)
+                .outerRadius(radius)
+
+            const slices = wrapper
+                .selectAll('slices')
+                .data(data_ready)
+                .enter()
+
+            console.log(data_ready)
+
+            slices
+                .append('path')
+                .attr('d', arcGenerator)
+                .attr('fill', d => colorScale(colorValue(d)))
+                .attr("stroke", "black")
+                .style("stroke-width", "1px")
+
+            slices
+                .append('text')
+                .text(d => labelName(d))
+                .attr("transform", d => "translate(" + textArcGenerator.centroid(d) + ")")
+                .style("text-anchor", "middle")
+
+            const legend = chart.append("g")
+                .selectAll("legend_entries")
+                .data(newData)
+                .enter()
+
+            legend
+                .append("rect")
+                .attr("x", legendXOffset)
+                .attr("y", (d, i) => legendYOffset + i * (legendBarHeight + legendInternalPadding))
+                .attr("width", legendBarWidth)
+                .attr("height", legendBarHeight)
+                .attr("class", "legend_bar")
+                .style("fill", (d, i) => colorScale(d.etf))
+
+            legend
+                .append("text")
+                .attr("x", legendXOffset + legendBarWidth + legendInternalPadding)
+                .attr("y", (d, i) => legendYOffset + i * (legendBarHeight + legendInternalPadding) + legendBarHeight)
+                .attr("class", "legend_text")
+                .text((d, i) => d.etf)
+
+
+
+        });
+
+    </script>
+</body>
+
+</html>

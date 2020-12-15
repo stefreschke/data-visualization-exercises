@@ -1,1 +1,29 @@
 // Your submission for Exercise 2.4
+
+bad-vis1.png
+
+- scaling of y-axis is inconsistent
+    - starts on steps of 30, than 50, 10 once, than 50 continuously
+- no mention of the disease whose cases are being counted of
+    - (can be ommitted, since its obviously about the covid-19 pandemic)
+
+
+bad-vis2.png
+
+- color of some circles are too similar
+    - e.g. "Texas" and "Utah" are difficult to separate (on our screens)
+    - which blue circle is directly behind Pennsylvania? ...we can't see
+
+
+bad-vis3.png
+
+- bar chart does not start at zero
+    - red sox seem to have only a fifth of the win percentage of the yankees
+
+
+bad-vis4.png
+
+- inverted y-axis is confusing
+    - on the first loo, gun deaths appear to decline
+- coloring is manipulative, visualization connotates the gun deaths as a "bleeding wound"
+    - subjectively we think thats acceptable, objectively we have to mention it

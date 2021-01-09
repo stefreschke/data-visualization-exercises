@@ -31,7 +31,7 @@
         }
 
         function getColorFromRatio(d) {
-            ratio = d["close"]/d["open"]
+            ratio = d["close"] / d["open"]
             //cut off growth/loss over 5%
             ratio = Math.min(ratio, 1.05)
             ratio = Math.max(ratio, 0.95)
@@ -74,7 +74,7 @@
 
             const dataEntered = chartArea
                 .append("g")
-                .attr("class", "day_boxes")
+                .attr("id", "day_boxes")
                 .selectAll("day_box")
                 .data(filtered)
                 .enter()
@@ -89,6 +89,7 @@
                 .attr("height", (d, i) => scaleY(d["low"]) - scaleY(d["high"]))
                 .attr("width", barWidth)
                 .attr("fill", getColorFromRatio)
+                .attr("opacity", 0.7)
 
             chartArea.append("g")
                 .attr("id", "xAxis")
@@ -98,6 +99,15 @@
             chartArea.append("g")
                 .attr("id", "yAxis")
                 .call(d3.axisLeft().scale(scaleY))
+
+            chartArea.append("g")
+                .attr("id", "line-graph")
+                .append("path")
+                .datum(filtered)
+                .attr("fill", "none")
+                .attr("stroke", "black")
+                .attr("stroke-widht", 5)
+                .attr("d", d3.line().x(d => scaleX(new Date(d["date"]))).y(d => scaleY(d["close"])))
         })
 
     </script>

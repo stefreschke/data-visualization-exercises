@@ -30,6 +30,14 @@
             return svg.attributes[s].value
         }
 
+        function getColorFromRatio(d) {
+            ratio = d["close"]/d["open"]
+            //cut off growth/loss over 5%
+            ratio = Math.min(ratio, 1.05)
+            ratio = Math.max(ratio, 0.95)
+            return d3.interpolateRdYlGn((ratio - 0.95) * 10)
+        }
+
         const marginLeft = 50
         const marginRight = 10
         const marginTop = 10
@@ -80,11 +88,12 @@
                 .attr("y", (d, i) => scaleY(d["high"]))
                 .attr("height", (d, i) => scaleY(d["low"]) - scaleY(d["high"]))
                 .attr("width", barWidth)
+                .attr("fill", getColorFromRatio)
 
             chartArea.append("g")
                 .attr("id", "xAxis")
                 .attr("transform", "translate(0," + chartHeight + ")")
-                .call(d3.axisBottom().scale(scaleX))
+                .call(d3.axisBottom().tickFormat(d3.timeFormat("%B %Y")).scale(scaleX))
 
             chartArea.append("g")
                 .attr("id", "yAxis")

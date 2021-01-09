@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        svg {
+            font: 10px sans-serif;
+        }
+
+        * {
+            font-family: 'sans serif';
+        }
+    </style>
+    <title>Course Development</title>
+</head>
+
+<body>
+    <h1>Course development over time</h1>
+    <svg id="chart" width="1000" height="600" />
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        function getCol(origin, col) {
+            return origin.map(row => row[col]);
+        }
+
+        var getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        const marginLeft = 50
+        const marginRight = 10
+        const marginTop = 10
+        const marginBottom = 50
+
+        const chart = d3.select("#chart")
+        const chartArea = chart
+            .append("g")
+            .attr("class", "chartArea")
+            .attr("transform", "translate(" + marginLeft + "," + marginTop + ")")
+
+        const displayCurrency = "bitcoin"
+        const startDate = "2018-05-29"
+        const endDate = "2018-11-29"
+
+        const chartHeight = getSVGAttribute("height") - marginTop - marginBottom
+        const chartWidth = getSVGAttribute("width") - marginLeft - marginRight
+
+        d3.csv("Data/crypto-markets.csv").then(function (dataArray) {
+
+            const filtered = dataArray.filter(entry =>
+                entry["slug"] == displayCurrency &&
+                entry["date"] > startDate &&
+                entry["date"] <= endDate
+            )
+            const maxCourse = Math.max.apply(null, getCol(filtered, 'high'))
+            const minCourse = Math.min.apply(null, getCol(filtered, 'low'))
+            //assuming array is odered
+
+            const scaleX = d3.scaleTime().domain([new Date(startDate), new Date(endDate)]).range([0, chartWidth])
+            const scaleY = d3.scaleLinear().domain([minCourse, maxCourse]).range([chartHeight, 0])
+            const internalPadding = 1
+            const barWidth = chartWidth / filtered.length - internalPadding
+
+            const dataEntered = chartArea
+                .append("g")
+                .attr("class", "day_boxes")
+                .selectAll("day_box")
+                .data(filtered)
+                .enter()
+
+            dataEntered
+                .append("g")
+                .attr("class", "day_box")
+                .attr("date", d => d["date"])
+                .append("rect")
+                .attr("x", (d, i) => scaleX(new Date(d["date"])) - barWidth / 2)
+                .attr("y", (d, i) => scaleY(d["high"]))
+                .attr("height", (d, i) => scaleY(d["low"]) - scaleY(d["high"]))
+                .attr("width", barWidth)
+
+            chartArea.append("g")
+                .attr("id", "xAxis")
+                .attr("transform", "translate(0," + chartHeight + ")")
+                .call(d3.axisBottom().scale(scaleX))
+
+            chartArea.append("g")
+                .attr("id", "yAxis")
+                .call(d3.axisLeft().scale(scaleY))
+        })
+
+    </script>
+</body>
+
+</html>

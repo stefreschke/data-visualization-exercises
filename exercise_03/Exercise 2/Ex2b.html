@@ -22,12 +22,20 @@
                 return origin.map((row) => row[col]);
             }
 
+            function formatPower(x) {
+                let e = Math.log10(x);
+                if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
+                return `10${(e + "").replace(/./g, (c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c] || "⁻")}`;
+            }
+
             // set the dimensions and margins of the graph
             var margin = { top: 10, right: 30, bottom: 30, left: 60 },
                 width = 1900 - margin.left - margin.right,
                 height = 600 - margin.top - margin.bottom;
 
-            const currencies = ["bitcoin", "iota", "ethereum-classic"];
+            const currencies = ["iota", "ethereum-classic"];
+            // const without = ["bitcoin", "bit20", "project-x", "ripple", "42-coin"];
+            const without = [];
             const numberOfCurrencies = 2071;
             const startDate = "2018-05-29";
             const endDate = "2018-11-29";
@@ -47,7 +55,8 @@
                     (entry) =>
                         entry["date"] > startDate &&
                         entry["date"] <= endDate &&
-                        currencies.includes(entry["slug"])
+                        !without.includes(entry["slug"])
+                    //currencies.includes(entry["slug"])
                 );
 
                 // group the data: I want to draw one line per group
@@ -72,8 +81,8 @@
                 console.log("min " + minCourse + ", max " + maxCourse);
 
                 // Add Y axis
-                var y = d3.scaleLinear().domain([minCourse, maxCourse]).range([height, 0]);
-                svg.append("g").call(d3.axisLeft(y));
+                var y = d3.scaleLog().domain([minCourse, maxCourse]).range([height, 0]);
+                svg.append("g").call(d3.axisLeft(y).ticks(10, formatPower));
 
                 // color palette
                 var res = sumstat.map(function (d) {

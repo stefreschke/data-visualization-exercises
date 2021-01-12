@@ -99,9 +99,6 @@
                 }
             });
 
-            console.log(sumstat);
-
-            console.log('got ' + sumstat.length + ' currencies');
 
             // Add X axis --> it is a date format
             var x = d3
@@ -111,7 +108,6 @@
 
             const maxCourse = Math.max.apply(null, getCol(data, 'close'));
             const minCourse = 0;
-            console.log('min ' + minCourse + ', max ' + maxCourse);
 
             // Add Y axis
             var y = d3.scaleLinear().domain([minCourse, maxCourse]).range([height, 0]);
@@ -155,7 +151,6 @@
             var trendColors = d3.interpolateReds;
 
             const drawSlice = sumstat.slice(0, numberOfCurrencies);
-            console.log('drawing ' + drawSlice.length + ' lines');
 
             // Draw the lines
             let lineAppend = svg.selectAll('.line');

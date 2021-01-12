@@ -11,12 +11,22 @@
         * {
             font-family: 'sans serif';
         }
+
+        .label {
+            font-size: 12pt;
+        }
+
+        #legend {
+            font-size: 11pt;
+        }
     </style>
     <title>Course Development</title>
 </head>
 
 <body>
     <h1>Course development over time</h1>
+    <h4>Showing the closing rate for Bitcoin for 6 monts, starting from May 29th 2018,
+        as well as the developement for the individual days.</h4>
     <svg id="chart" width="1000" height="600" />
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
@@ -30,15 +40,14 @@
             return svg.attributes[s].value
         }
 
-        function getColorFromRatio(d) {
-            ratio = d["close"] / d["open"]
+        function getColorFromRatio(ratio) {
             //cut off growth/loss over 5%
             ratio = Math.min(ratio, 1.05)
             ratio = Math.max(ratio, 0.95)
             return d3.interpolateRdYlGn((ratio - 0.95) * 10)
         }
 
-        const marginLeft = 50
+        const marginLeft = 80
         const marginRight = 10
         const marginTop = 10
         const marginBottom = 50
@@ -56,6 +65,41 @@
         const chartHeight = getSVGAttribute("height") - marginTop - marginBottom
         const chartWidth = getSVGAttribute("width") - marginLeft - marginRight
 
+        const valuesForLegend = [0.95, 0.975, 1, 1.025, 1.05]
+        const heightPerLegendEntry = 15
+        const internalLegendPadding = 5
+        const outerLegendPadding = 20
+        const legendBarWidth = 30
+
+        function getLegendHeight(i) {
+            return chartHeight + 10 - outerLegendPadding - heightPerLegendEntry * (i + 1)
+        }
+        const legendRaw = chartArea
+            .append("g")
+            .attr("id", "legend")
+
+        const legend = legendRaw
+            .selectAll("legend-entry")
+            .data(valuesForLegend.reverse())
+            .enter()
+
+        legend
+            .append("rect")
+            .attr("transform", (d, i) => "translate(" + outerLegendPadding + "," + getLegendHeight(i) + ")")
+            .attr("height", heightPerLegendEntry - internalLegendPadding)
+            .attr("width", legendBarWidth)
+            .attr("fill", d => getColorFromRatio(d))
+
+        legend
+            .append("text")
+            .attr("transform", (d, i) => "translate(" + (outerLegendPadding + legendBarWidth + internalLegendPadding) + "," + (getLegendHeight(i - 1) - internalLegendPadding) + ")")
+            .text(d => ((Math.round((d-1)*1000))/10) + "%")
+
+        legendRaw
+        .append("text")
+        .attr("transform", (d, i) => "translate(" + outerLegendPadding + "," + getLegendHeight(valuesForLegend.length) + ")")
+        .text("Relative change from opening to closing course")
+
         d3.csv("Data/crypto-markets.csv").then(function (dataArray) {
 
             const filtered = dataArray.filter(entry =>
@@ -71,6 +115,37 @@
             const scaleY = d3.scaleLinear().domain([minCourse, maxCourse]).range([chartHeight, 0])
             const internalPadding = 1
             const barWidth = chartWidth / filtered.length - internalPadding
+
+            const xAxis = chartArea
+                .append("g")
+                .attr("id", "xAxis")
+
+            xAxis
+                .append("g")
+                .attr("transform", "translate(0," + chartHeight + ")")
+                .call(d3.axisBottom().tickFormat(d3.timeFormat("%B %Y")).scale(scaleX))
+
+            xAxis
+                .append("text")
+                .attr("transform", "translate(" + chartWidth / 2 + "," + (chartHeight + 50) + ")")
+                .text("Time")
+                .attr("class", "label")
+                .attr("text-anchor", "middle")
+
+            const yAxis = chartArea
+                .append("g")
+                .attr("id", "yAxis")
+
+            yAxis
+                .append("g")
+                .call(d3.axisLeft().scale(scaleY))
+
+            yAxis
+                .append("text")
+                .attr("transform", "translate(" + -60 + "," + chartHeight / 2 + ")rotate(-90)")
+                .text("Course in US-Dollar")
+                .attr("class", "label")
+                .attr("text-anchor", "middle")
 
             const dataEntered = chartArea
                 .append("g")
@@ -88,17 +163,8 @@
                 .attr("y", (d, i) => scaleY(d["high"]))
                 .attr("height", (d, i) => scaleY(d["low"]) - scaleY(d["high"]))
                 .attr("width", barWidth)
-                .attr("fill", getColorFromRatio)
+                .attr("fill", d => getColorFromRatio(d["close"] / d["open"]))
                 .attr("opacity", 0.7)
-
-            chartArea.append("g")
-                .attr("id", "xAxis")
-                .attr("transform", "translate(0," + chartHeight + ")")
-                .call(d3.axisBottom().tickFormat(d3.timeFormat("%B %Y")).scale(scaleX))
-
-            chartArea.append("g")
-                .attr("id", "yAxis")
-                .call(d3.axisLeft().scale(scaleY))
 
             chartArea.append("g")
                 .attr("id", "line-graph")
@@ -111,6 +177,10 @@
         })
 
     </script>
+    <p style="width:1000px">Each bar represents the span of course rates for the represented day, i.e.
+        it's lower bound is the days lowest course, whiles the upper bound is the days highest rate.
+        The color represents the relative change between the opening and closing rate as depicted in the legend.
+    </p>
 </body>
 
 </html>

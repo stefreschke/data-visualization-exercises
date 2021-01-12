@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
 <style>
-
-  
     svg {
         font: 10px sans-serif;
     }
@@ -28,8 +26,14 @@
 </style>
 
 <body>
-    <h1>What are the characteristics of good wine?</h1>
-    <button id="buttonilein" onclick="myFunction()">Highlight bad wine instead</button> 
+    <h1 id="title">What are the characteristics of good wine?</h1>
+    <p>
+        Each wine is represented as a line connecting all available characteristics. <br />
+        The quality of the wine is encoded into the color and opacity of the line.
+        <br />
+        Press the button to change the focus between good wine (green) and bad wine (red).
+    </p>
+    <button id="buttonilein" onclick="redraw()">Highlight bad wine instead</button>
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
         var margin = { top: 50, right: 50, bottom: 50, left: 50 },
@@ -40,6 +44,8 @@
         var y = {};
         var dimensions;
         var dragging = {};
+        var state = true;
+        var quality;
 
         var line = d3.line(),
             axis = d3.axisLeft(),
@@ -49,8 +55,6 @@
         function getCol(origin, col) {
             return origin.map((row) => row[col]);
         }
-
-        var state = true;
 
         var svg = d3
             .select('body')
@@ -76,40 +80,35 @@
                     return [position(p), y[p](d[p])];
                 })
             );
-            // console.log(createdLine);
             return createdLine;
         }
 
-        const dims = [
-            'fixed acidity',
-            'volatile acidity',
-            'citric acid',
-            'residual sugar',
-            'chlorides',
-            'free sulfur dioxide',
-            'total sulfur dioxide',
-            'density',
-            'pH',
-            'sulphates',
-            'alcohol',
-        ];
-
+        // use weights to sort columns
+        // sorted by "close watching"
         const weights = {
-            'fixed acidity': 4,
-            'volatile acidity': 6,
+            'fixed acidity': 2,
+            'volatile acidity': 8,
             'citric acid': 3,
-            'residual sugar': 9,
-            chlorides: 8,
-            'free sulfur dioxide': 5,
-            'total sulfur dioxide': 7,
+            'residual sugar': 6,
+            chlorides: 12,
+            'free sulfur dioxide': 4,
+            'total sulfur dioxide': 5,
             density: 1,
-            pH: 11,
-            sulphates: 10,
-            alcohol: 2,
+            pH: 10,
+            sulphates: 11,
+            alcohol: 9,
         };
 
+        function conditionalHighlight(goodHighlighted) {
+            if (goodHighlighted) {
+                return (d) => quality(d) * 0.8 + 0.2;
+            } else {
+                return (d) => (quality(d) * -1 + 2) / 2;
+            }
+        }
+
         function draw(highlightGoodQuality) {
-            svg.selectAll("*").remove();
+            svg.selectAll('*').remove();
             d3.csv('Data/winequality-red.csv').then(function (dataArray) {
                 // Extract the list of dimensions and create a scale for each
                 dimensions = d3.keys(dataArray[0]).filter((key) => {
@@ -127,33 +126,23 @@
                 });
                 dimensions.sort((a, b) => weights[a] > weights[b]);
 
+                // utilty data to build fancy quality function
                 const maxQuality = Math.max.apply(null, getCol(dataArray, 'quality'));
                 const minQuality = Math.min.apply(null, getCol(dataArray, 'quality'));
-                console.log(maxQuality);
-                console.log(minQuality);
 
-                function quality(d) {
+                // write quality function to global var
+                quality = (d) => {
                     // calculate quality of a wine as [0, 1] interval
                     return (d.quality - minQuality) / (maxQuality - minQuality);
-                }
+                };
 
-                console.log(quality({ quality: 8 }));
-                console.log(quality({ quality: 3 }));
-
-                function conditionalHighlight(goodHighlighted) {
-                    if (goodHighlighted) {
-                        return (d) => quality(d) * 0.5 + 0.5;
-                    } else {
-                        return (d) => -1 * quality(d) + 1;
-                    }
-                }
+                let condHighlight = conditionalHighlight(highlightGoodQuality);
 
                 const range = [];
                 for (var i = 0; i < dimensions.length; i++) {
                     range.push((i * width) / dimensions.length);
                 }
                 x = d3.scaleOrdinal().domain(dimensions).range(range, 1);
-                dimensions.forEach((d) => console.log());
 
                 // Add lines between
                 foregroundLines = svg
@@ -163,10 +152,10 @@
                     .data(dataArray)
                     .enter()
                     .append('path')
+                    .attr('class', 'actual-wine-line')
                     .attr('d', path)
                     .style('stroke', (d) => d3.interpolateRdYlGn(quality(d)))
-                    .style('stroke-width', (d) => conditionalHighlight(highlightGoodQuality) * 5)
-                    .style('opacity', conditionalHighlight(highlightGoodQuality));
+                    .style('opacity', (d) => condHighlight(d) * 1);
 
                 // Add a group element for each dimension.
                 var g = svg
@@ -188,18 +177,28 @@
 
                 // axis labels
                 g.append('text')
-                    .style('font-size', "15px")
+                    .style('font-size', '15px')
                     .style('text-anchor', 'middle')
                     .attr('y', -11)
-                    .text(d => d);
+                    .text((d) => d);
             });
         }
 
-        function myFunction() {
-          state = !state;
-          var text = document.getElementById("buttonilein").firstChild;
-          text.data = (text.data == "Highlight bad wine") ? "Highlight good wine instead" : "Highlight bad wine instead";
-          draw(state);
+        function redraw() {
+            var text = document.getElementById('buttonilein').firstChild;
+            var title = document.getElementById('title').firstChild;
+            text.data = state ? 'Highlight good wine instead' : 'Highlight bad wine instead';
+            title.data = state
+                ? 'What are the characteristics of bad wine?'
+                : 'What are the characteristics of good wine?';
+            state = !state;
+            // no need to call #draw
+            // just update these styles
+            svg.selectAll('.wine-line')
+                .selectAll('.actual-wine-line')
+                .transition()
+                .duration(1000) // just 4 fun
+                .style('opacity', (d) => conditionalHighlight(state)(d) * 1);
         }
 
         draw(state);

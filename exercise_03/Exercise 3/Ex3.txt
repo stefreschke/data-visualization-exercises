@@ -1,0 +1,33 @@
+vis1.jpg
+
+- point visualized does not require map of the USA
+- southern USA is implied to be solely "white"
+- @2010, complete rectangle is assumed,
+    thus the "asian" (purple) strip is not visible, despite being there
+- it is misleading: percentage is visualized using the height at the given year,
+    the viewer first thinks the percentages are represented using the colored area
+    (why else would you put Alaska there?)
+
+vis2.png
+
+- totally confusing at the beginning (where is the time?)
+- no comparability for different countries on same days
+- too many countries, with 8 lines this is already too confusing
+- what does the increasing thickness of the lines mean?
+- "France" and "UK" overlap themselves (see April 9th), it is difficult to follow them with eyes only
+
+vis3.jpg
+
+- unclear: which country/region is referred to? (only accessible through context of vis1.jpg)
+- 2010/2060: forgot to order pie slice by size
+(- nose and chin distort the pie charts idea of using only the area (angles) to convey information
+- eye = "Other"?) - we do not perceive these to be severe
+
+vis4.png
+
+- indifferent: color coding is categorical when diverging (or two combined sequential) scale(s)
+    would have been better, e.g. +1$ and +1000$ are both bright green, while -1$ and -1000$ are both dark referred
+    similarity between +1$ and -1$ is not shown
+- why are there visible lines?
+- y axis cut (title limits to middle class though),
+    is the categorization middleclass -> +40.000$ reasoned?

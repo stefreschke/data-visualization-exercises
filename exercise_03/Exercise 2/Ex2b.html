@@ -1,120 +1,129 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <style>
-            .line {
-                opacity: .5;
-            }
 
-            svg {
-                font: 10px sans-serif;
-            }
+<head>
+    <meta charset="utf-8" />
+    <style>
+        .line {
+            opacity: .5;
+        }
 
-            * {
-                font-family: 'sans serif';
-            }
-        </style>
-        <title>Course Development</title>
-    </head>
-    <body>
-        <h1>Course development over time</h1>
-        <div id="my_dataviz"></div>
-        <script src="//d3js.org/d3.v5.min.js"></script>
-        <script>
-            function getCol(origin, col) {
-                return origin.map((row) => row[col]);
-            }
+        svg {
+            font: 10px sans-serif;
+        }
 
-            function formatPower(x) {
-                let e = Math.log10(x);
-                if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
-                return `10${(e + '').replace(/./g, (c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c] || '⁻')}`;
-            }
+        * {
+            font-family: 'sans serif';
+        }
+    </style>
+    <title>Course Development</title>
+</head>
 
-            // set the dimensions and margins of the graph
-            var margin = { top: 10, right: 30, bottom: 30, left: 60 },
-                width = 1900 - margin.left - margin.right,
-                height = 600 - margin.top - margin.bottom;
+<body>
+    <h1>Course development over time</h1>
+    <div id="my_dataviz"></div>
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>
+        function getCol(origin, col) {
+            return origin.map((row) => row[col]);
+        }
 
-            const currencies = ['iota', 'ethereum-classic'];
-            // const without = ["bitcoin", "bit20", "project-x", "ripple", "42-coin"];
-            const without = [];
-            const numberOfCurrencies = 2071;
-            const startDate = '2018-05-29';
-            const endDate = '2018-11-29';
+        function formatPower(x) {
+            let e = Math.log10(x);
+            if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
+            return `10${(e + '').replace(/./g, (c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c] || '⁻')}`;
+        }
 
-            // append the svg object to the body of the page
-            var svg = d3
-                .select('#my_dataviz')
-                .append('svg')
-                .attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.top + margin.bottom)
-                .append('g')
-                .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        // set the dimensions and margins of the graph
+        var margin = { top: 10, right: 30, bottom: 30, left: 60 },
+            width = 1900 - margin.left - margin.right,
+            height = 600 - margin.top - margin.bottom;
 
-            //Read the data
-            d3.csv('Data/crypto-markets.csv').then((data) => {
-                data = data.filter(
-                    (entry) =>
-                        entry['date'] > startDate &&
-                        entry['date'] <= endDate &&
-                        !without.includes(entry['slug'])
-                    //currencies.includes(entry["slug"])
-                );
+        const currencies = ['bitcoin', 'ethereum-classic', 'monero', 'bitcoin-cash'];
+        const numberOfCurrencies = 2071;
+        const startDate = '2017-11-29';
+        const endDate = '2018-11-29';
 
-                // group the data: I want to draw one line per group
-                var sumstat = d3
-                    .nest()
-                    .key((d) => d['slug'])
-                    .entries(data);
+        // append the svg object to the body of the page
+        var svg = d3
+            .select('#my_dataviz')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-                console.log('got ' + sumstat.length + ' currencies');
+        //Read the data
+        d3.csv('Data/crypto-markets.csv').then((data) => {
+            var startValues = {}
+            data = data.filter(
+                (entry) => {
+                    if (currencies.includes(entry["slug"])) {
+                        if (entry["date"] == startDate) {
+                            startValues[entry["slug"]] = entry["close"]
+                        }
+                        return entry['date'] > startDate && entry['date'] <= endDate
+                    }
+                    else {
+                        return false
+                    }
+                }
+            );
 
-                // Add X axis --> it is a date format
-                var x = d3
-                    .scaleTime()
-                    .domain([new Date(startDate), new Date(endDate)])
-                    .range([0, width]);
-                svg.append('g')
-                    .attr('transform', 'translate(0,' + height + ')')
-                    .call(d3.axisBottom(x).tickFormat(d3.timeFormat('%B %Y')).scale(x));
+            data.forEach(value => {
+                value["relative_value"] = value["close"] / startValues[value["slug"]]
+            })
 
-                const maxCourse = Math.max.apply(null, getCol(data, 'close'));
-                const minCourse = Math.min.apply(null, getCol(data, 'close'));
-                console.log('min ' + minCourse + ', max ' + maxCourse);
+            // group the data: I want to draw one line per group
+            var sumstat = d3
+                .nest()
+                .key((d) => d['slug'])
+                .entries(data);
 
-                // Add Y axis
-                var y = d3.scaleLog().domain([minCourse, maxCourse]).range([height, 0]);
-                svg.append('g').call(d3.axisLeft(y).ticks(10, formatPower));
+            // Add X axis --> it is a date format
+            var x = d3
+                .scaleTime()
+                .domain([new Date(startDate), new Date(endDate)])
+                .range([0, width]);
+            svg.append('g')
+                .attr('transform', 'translate(0,' + height + ')')
+                .call(d3.axisBottom(x).tickFormat(d3.timeFormat('%B %Y')).scale(x));
 
-                // color palette
-                var res = sumstat.map(function (d) {
-                    return d.key;
-                }); // list of group names
-                var color = d3
-                    .scaleOrdinal()
-                    .range(d3.schemeTableau10);
+            const maxCourse = Math.max.apply(null, getCol(data, 'relative_value'));
+            const minCourse = Math.min.apply(null, getCol(data, 'relative_value'));
 
-                const drawSlice = sumstat.slice(0, numberOfCurrencies);
-                console.log('drawing ' + drawSlice.length + ' lines');
+            // Add Y axis
+            var y = d3.scaleLinear().domain([minCourse, maxCourse]).range([height, 0]);
+            svg.append('g').call(d3.axisLeft(y));
 
-                // Draw the lines
-                svg.selectAll('.line')
-                    .data(drawSlice)
-                    .enter()
-                    .append('path')
-                    .attr('fill', 'none')
-                    .attr('stroke', (d) => color(d.key))
-                    .attr('stroke-width', 1.5)
-                    .attr('d', (d) => {
-                        let lineFunction = d3
-                            .line()
-                            .x((dx) => x(new Date(dx['date'])))
-                            .y((dx) => y(dx['close']));
-                        return lineFunction(d.values);
-                    });
-            });
-        </script>
-    </body>
+            // color palette
+            var res = sumstat.map(function (d) {
+                return d.key;
+            }); // list of group names
+            var color = d3
+                .scaleOrdinal()
+                .range(d3.schemeTableau10);
+
+            const drawSlice = sumstat.slice(0, numberOfCurrencies);
+            console.log('drawing ' + drawSlice.length + ' lines');
+
+            // Draw the lines
+            svg.selectAll('.line')
+                .data(drawSlice)
+                .enter()
+                .append('path')
+                .attr('fill', 'none')
+                .attr('stroke', (d) => color(d.key))
+                .attr('stroke-width', 1.5)
+                .attr('d', (d) => {
+                    let lineFunction = d3
+                        .line()
+                        .x((dx) => x(new Date(dx['date'])))
+                        .y((dx) => y(dx['relative_value']));
+                    return lineFunction(d.values);
+                });
+        });
+    </script>
+</body>
+
 </html>

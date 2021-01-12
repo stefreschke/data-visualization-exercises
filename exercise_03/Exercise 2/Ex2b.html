@@ -15,12 +15,23 @@
         * {
             font-family: 'sans serif';
         }
+
+        .label {
+            font-size: 12pt;
+        }
+
+        #legend {
+            font-size: 11pt;
+        }
     </style>
     <title>Course Development</title>
 </head>
 
 <body>
     <h1>Course development over time</h1>
+    <h4>Showing the closing rate for carefully (i.e randomly) selected crypto currencies relative to the closing
+        rate of
+        November 29th 2017 in the time span November 29th 2017 to November 29th 2018</h4>
     <div id="my_dataviz"></div>
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
@@ -35,8 +46,8 @@
         }
 
         // set the dimensions and margins of the graph
-        var margin = { top: 10, right: 30, bottom: 30, left: 60 },
-            width = 1900 - margin.left - margin.right,
+        var margin = { top: 10, right: 30, bottom: 50, left: 80 },
+            width = 1800 - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom;
 
         const currencies = ['bitcoin', 'ethereum-classic', 'monero', 'bitcoin-cash'];
@@ -62,7 +73,7 @@
                         if (entry["date"] == startDate) {
                             startValues[entry["slug"]] = entry["close"]
                         }
-                        return entry['date'] > startDate && entry['date'] <= endDate
+                        return entry['date'] >= startDate && entry['date'] <= endDate
                     }
                     else {
                         return false
@@ -85,16 +96,43 @@
                 .scaleTime()
                 .domain([new Date(startDate), new Date(endDate)])
                 .range([0, width]);
-            svg.append('g')
-                .attr('transform', 'translate(0,' + height + ')')
-                .call(d3.axisBottom(x).tickFormat(d3.timeFormat('%B %Y')).scale(x));
 
             const maxCourse = Math.max.apply(null, getCol(data, 'relative_value'));
             const minCourse = Math.min.apply(null, getCol(data, 'relative_value'));
 
             // Add Y axis
             var y = d3.scaleLinear().domain([minCourse, maxCourse]).range([height, 0]);
-            svg.append('g').call(d3.axisLeft(y));
+
+            const xAxis = svg
+                .append("g")
+                .attr("id", "xAxis")
+
+            xAxis
+                .append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom().tickFormat(d3.timeFormat("%B %Y")).scale(x))
+
+            xAxis
+                .append("text")
+                .attr("transform", "translate(" + width / 2 + "," + (height + 50) + ")")
+                .text("Time")
+                .attr("class", "label")
+                .attr("text-anchor", "middle")
+
+            const yAxis = svg
+                .append("g")
+                .attr("id", "yAxis")
+
+            yAxis
+                .append("g")
+                .call(d3.axisLeft().scale(y))
+
+            yAxis
+                .append("text")
+                .attr("transform", "translate(" + -60 + "," + height / 2 + ")rotate(-90)")
+                .text("Relative closing course, 1 = closing course of November 29th 2017")
+                .attr("class", "label")
+                .attr("text-anchor", "middle")
 
             // color palette
             var res = sumstat.map(function (d) {
@@ -122,6 +160,33 @@
                         .y((dx) => y(dx['relative_value']));
                     return lineFunction(d.values);
                 });
+
+            const legend = svg
+                .append("g")
+                .attr("id", "legend")
+                .selectAll("legend-entry")
+                .data(currencies)
+                .enter()
+
+            const innerLegendPadding = 5
+            const outerLegendPadding = 20
+            const legendLineWidth = 30
+            const legendTextWidth = 100
+            const legendEntryHeight = 15
+            const xTranslationLegend = width - outerLegendPadding - legendLineWidth - innerLegendPadding - legendTextWidth
+
+            legend
+                .append("rect")
+                .attr("transform", (d, i) => "translate(" + xTranslationLegend + "," + (i * legendEntryHeight - 5) + ")")
+                .attr("height", 2)
+                .attr("width", legendLineWidth)
+                .attr("fill", d => color(d))
+
+            legend
+                .append("text")
+                .attr("transform", (d, i) => "translate(" + (xTranslationLegend + legendLineWidth + innerLegendPadding) + "," + i * legendEntryHeight + ")")
+                .text(d => d)
+
         });
     </script>
 </body>

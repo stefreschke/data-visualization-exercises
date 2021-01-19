@@ -210,15 +210,15 @@
                     return lineFunction(d.values);
                 });
 
-            const innerLegendPadding = 5
-            const outerLegendPadding = 20
+            const innerLegendPadding = 15
+            const outerLegendPadding = 50
             const legendLineWidth = 30
             const legendTextWidth = 200
             const legendEntryHeight = 15
             const xTranslationLegend = width - outerLegendPadding - legendLineWidth - innerLegendPadding - legendTextWidth
 
             const dataForLegend = [
-                {text:"Bticoin closing rate", color:color("bitcoin"), height:4},
+                {text:"Bitcoin closing rate", color:color("bitcoin"), height:4},
                 {text:"Moving average (9 days)", color:trendColors(.9), height:2},
                 {text:"Moving average (21 days)", color:trendColors(.6), height:2},
                 {text:"Moving average (50 days)", color:trendColors(.3), height:2},
@@ -232,14 +232,14 @@
 
             legend
                 .append("rect")
-                .attr("transform", (d, i) => "translate(" + xTranslationLegend + "," + (i * legendEntryHeight - 5) + ")")
+                .attr("transform", (d, i) => "translate(" + xTranslationLegend + "," + (i * legendEntryHeight) + ")")
                 .attr("height", d => d["height"])
                 .attr("width", legendLineWidth)
                 .attr("fill", d => d["color"])
 
             legend
                 .append("text")
-                .attr("transform", (d, i) => "translate(" + (xTranslationLegend + legendLineWidth + innerLegendPadding) + "," + i * legendEntryHeight + ")")
+                .attr("transform", (d, i) => "translate(" + (xTranslationLegend + legendLineWidth + innerLegendPadding) + "," + (i * legendEntryHeight + 5)+ ")")
                 .text(d => d["text"])
         });
     </script>

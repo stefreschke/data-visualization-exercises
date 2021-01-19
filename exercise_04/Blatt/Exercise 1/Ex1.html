@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        svg {
+            font: 10px sans-serif;
+        }
+
+        * {
+            font-family: 'sans serif';
+        }
+
+        .label {
+            font-size: 12pt;
+        }
+
+        #legend {
+            font-size: 11pt;
+        }
+    </style>
+    <title>Course Development</title>
+</head>
+
+<body>
+    <h1>Spaß, Spaß, Spaß</h1>
+    <h4>Yuhuuuuu.</h4>
+    <svg id="chart" width="1000" height="600" />
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        function getCol(origin, col) {
+            return origin.map(row => row[col]);
+        }
+
+        var getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        const height = getSVGAttribute("height")
+        const width = getSVGAttribute("width")
+
+        d3.csv('Data/MigrationFlow.csv').then((data) => {
+
+            function ticked() {
+                links.attr("x1", function (d) { return d.source.x; })
+                    .attr("y1", function (d) { return d.source.y; })
+                    .attr("x2", function (d) { return d.target.x; })
+                    .attr("y2", function (d) { return d.target.y; });
+                nodes.attr("cx", function (d) { return d.x; })
+                    .attr("cy", function (d) { return d.y; });
+            }
+
+            var nested = d3.nest()
+                .key(d => d['region_orig'])
+                .key(d => d['region_dest'])
+                .entries(data)
+
+            var nodes = []
+            var links = []
+
+            nested.forEach(node => {
+                nodeObj = {}
+                nodeObj['id'] = node.key
+                nodes.push(nodeObj)
+                node.values.forEach(value => {
+                    linkObj = {}
+                    linkObj['source'] = node.key
+                    linkObj['target'] = value.key
+                    linkObj['weight'] = value.values[0]['regionflow_2005']
+                    links.push(linkObj)
+                })
+            })
+
+            console.log(nodes)
+            console.log(links)
+
+            const chart = d3.select("#chart")
+
+            var simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink().id(function (d, i) {
+                    return i;
+                }).distance(30))
+                .force("charge", d3.forceManyBody().strength(-120))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+
+            const linksDom = chart
+                .append('g')
+                .attr('class', 'links')
+                .selectAll("line")
+                .data(links)
+                .enter()
+                .append("line")
+
+            console.log(simulation)
+
+            const nodesDom = chart
+                .append('g')
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(nodes)
+                .enter()
+
+            nodesDom
+                .append("g")
+                //.call(simulation.drag)
+                .append("circle")
+                .attr("r", 10)
+                .style("fill", "steelblue")
+                
+
+            simulation
+                .nodes(nodes)
+                .on("tick", ticked);
+
+            simulation.force("link")
+                .links(links);
+
+        })
+
+    </script>
+</body>
+
+</html>

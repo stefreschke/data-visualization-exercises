@@ -42,12 +42,17 @@
         }
         format = d3.format(",d")
 
-        d3.json("structure.json").then(function (data) {
+        d3.json("data_structure.json").then(function (data) {
 
             color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children.length + 1))
 
+            function getFill(d, depth) {
+                if (d.depth <= depth ) return "#ccc";
+                while (d.depth > depth + 1) d = d.parent;
+                return color(d.data.name);
+            }
+
             const root = partition(data);
-            console.log(root.descendants())
             let focus = root;
 
             const svg = d3.select("#chart")
@@ -62,11 +67,7 @@
                 .attr("width", d => d.y1 - d.y0 - 1)
                 .attr("height", d => rectHeight(d))
                 .attr("fill-opacity", 0.6)
-                .attr("fill", d => {
-                    if (!d.depth) return "#ccc";
-                    while (d.depth > 1) d = d.parent;
-                    return color(d.data.name);
-                })
+                .attr("fill", d => getFill(d,0))
                 .style("cursor", "pointer")
                 .on("click", clicked);
 
@@ -90,6 +91,9 @@
             function clicked(p) {
                 focus = focus === p ? p = p.parent : p;
 
+                if ("children" in p)
+                    color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, p.children.length + 1))
+
                 root.each(d => d.target = {
                     x0: (d.x0 - p.x0) / (p.x1 - p.x0) * height,
                     x1: (d.x1 - p.x0) / (p.x1 - p.x0) * height,
@@ -97,10 +101,15 @@
                     y1: d.y1 - p.y0
                 });
 
+                depth = p.depth
+
                 const t = cell.transition().duration(750)
                     .attr("transform", d => `translate(${d.target.y0},${d.target.x0})`);
 
-                rect.transition(t).attr("height", d => rectHeight(d.target));
+                rect.transition(t)
+                    .attr("height", d => rectHeight(d.target))
+                    .attr("fill", d => getFill(d, depth))
+
                 text.transition(t).attr("fill-opacity", d => +labelVisible(d.target));
                 tspan.transition(t).attr("fill-opacity", d => labelVisible(d.target) * 0.7);
             }

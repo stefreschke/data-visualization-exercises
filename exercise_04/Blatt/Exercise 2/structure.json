@@ -1,0 +1,22 @@
+{
+    "name": "eins",
+    "children": [
+        {
+            "name": "zwei",
+            "children": [
+                {
+                    "name": "drei",
+                    "value": 3
+                },
+                {
+                    "name": "vier",
+                    "value": 5
+                }
+            ]
+        },
+        {
+            "name": "fünf",
+            "value": 5
+        }
+    ]
+}

@@ -20,9 +20,13 @@
 </header>
 
 <body>
+    <h1>Structure of Globjects-Repository</h1>
+    <h4>Each "level" in the Repository is represented by a vertikal layer scaled by the lines of code.</h4>
     <svg id="chart" width="1000" height="600" />
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
+
+        const numberOfColumns = 3
 
         var getSVGAttribute = (s) => {
             const svg = document.getElementById("chart")
@@ -37,7 +41,7 @@
                 .sum(d => d.value)
                 .sort((a, b) => b.height - a.height || b.value - a.value);
             return d3.partition()
-                .size([height, (root.height + 1) * width / 3])
+                .size([height, (root.height + 1) * width / numberOfColumns])
                 (root);
         }
         format = d3.format(",d")
@@ -47,17 +51,17 @@
             color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children.length + 1))
 
             function getFill(d, depth) {
-                if (d.depth <= depth ) return "#ccc";
-                while (d.depth > depth + 1) d = d.parent;
+                if (d.depth <= depth) return "#ccc";
+                while (d.depth > depth + 1) d = d.parent; //allways color second color
                 return color(d.data.name);
             }
 
             const root = partition(data);
             let focus = root;
 
-            const svg = d3.select("#chart")
+            const chart = d3.select("#chart")
 
-            const cell = svg
+            const cell = chart
                 .selectAll("g")
                 .data(root.descendants())
                 .join("g")
@@ -67,7 +71,7 @@
                 .attr("width", d => d.y1 - d.y0 - 1)
                 .attr("height", d => rectHeight(d))
                 .attr("fill-opacity", 0.6)
-                .attr("fill", d => getFill(d,0))
+                .attr("fill", d => getFill(d, 0))
                 .style("cursor", "pointer")
                 .on("click", clicked);
 
@@ -90,6 +94,12 @@
 
             function clicked(p) {
                 focus = focus === p ? p = p.parent : p;
+                move(p)
+            }
+
+            function move(p) {
+                if (p == null)
+                    return
 
                 if ("children" in p)
                     color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, p.children.length + 1))
@@ -119,9 +129,8 @@
             }
 
             function labelVisible(d) {
-                return d.y1 <= width && d.y0 >= 0 && d.x1 - d.x0 > 16;
+                return d.x1 - d.x0 > 16;
             }
-
         })
 
     </script>

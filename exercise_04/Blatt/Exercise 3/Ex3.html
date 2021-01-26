@@ -25,16 +25,7 @@
         <script>
             var width = 1800;
             var height = 700;
-
-            var data = d3.range(200).map(function (d) {
-                var y = d3.randomNormal(height / 2, 80)();
-                var x = d3.randomNormal(width / 2, 150)();
-                if (x > width) x = width - 0.001;
-                else if (x < 0) x = 0.001;
-                if (y > height) y = height - 0.001;
-                else if (y < 0) y = 0.001;
-                return [x, y];
-            });
+            var data;
 
             var transform = (list) => {
                 let result = [];
@@ -46,16 +37,15 @@
             d3.csv('Data/postoffices_usa.csv').then(function (csvData) {
                 let mainList = [];
                 csvData.forEach((row) => {
-                    let lat = parseInt(row.lat);
-                    let lon = parseInt(row.lon);
+                    let lat = parseFloat(row.lat);
+                    let lon = parseFloat(row.lon);
                     mainList.push(transform([lat, lon]));
                 });
-                console.log('MAIN LIST');
-                console.log(mainList);
-                console.log(data);
                 data = mainList;
+                console.log("contains " + data.length + " elements");
 
                 var delaunay = d3.Delaunay.from(data);
+                var voronoi = delaunay.voronoi();
 
                 delaunay.findAll = function (x, y, radius) {
                     const points = delaunay.points,
@@ -88,7 +78,11 @@
                     .join('circle')
                     .attr('cx', (d) => d[0])
                     .attr('cy', (d) => d[1])
-                    .attr('r', 3);
+                    .attr('r', 1);
+
+                voronoi.render();
+
+                console.log(d3.geoVoronoi());
 
                 var results = delaunay.findAll(width / 2, height / 2, 25);
                 circles.attr('fill', (_, i) => (results.indexOf(i) > -1 ? 'orange' : 'green'));

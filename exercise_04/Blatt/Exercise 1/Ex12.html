@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        svg {
+            font: 10px sans-serif;
+        }
+
+        * {
+            font-family: 'sans serif';
+        }
+
+        .label {
+            font-size: 12pt;
+        }
+
+        #legend {
+            font-size: 11pt;
+        }
+    </style>
+    <title>Course Development</title>
+</head>
+
+<body>
+    <h1>Spaß, Spaß, Spaß</h1>
+    <h4>Yuhuuuuu.</h4>
+    <svg id="chart" width="1000" height="600" />
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        function index_to_rad(index) {
+            return 2 * Math.PI * index / 10;
+        }
+
+        function getCol(origin, col) {
+            return origin.map(row => row[col]);
+        }
+
+        var getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        /*const chord = d3.chord()
+            .padAngle(0.05)
+            .sortSubgroups(d3.descending)
+            ([
+                [0, 0, 0, 0, 0, 0, 0, 0, 20, 130, 60, 0, 150, 20, 90, 2051],
+                [0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 90, 0, 0, 0, 2580, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 80, 0, 10, 784, 60, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 480, 0, 20, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 80, 195, 10, 30, 90, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 149, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 5212, 70, 0, 20, 50, 110, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 276, 40, 40, 0, 0, 0, 0, 0],
+                [20, 10, 10, 0, 20, 0, 0, 276, 0, 0, 0, 0, 0, 0, 0, 0],
+                [130, 0, 0, 0, 20, 0, 5212, 40, 0, 0, 0, 0, 0, 0, 0, 0],
+                [60, 90, 80, 40, 80, 149, 70, 40, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 195, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [150, 0, 10, 480, 10, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [20, 0, 784, 0, 30, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [90, 2580, 60, 20, 90, 0, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [2051, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ])*/
+
+        d3.csv('Data/MigrationFlow.csv').then((data) => {
+
+            var nested = d3.nest()
+                .key(d => d['region_orig'])
+                .key(d => d['region_dest'])
+                .entries(data)
+
+            var nodes = []
+            var links = []
+
+            nested.forEach(node => {
+                nodeObj = {}
+                nodeObj['id'] = node.key
+                nodes.push(nodeObj)
+                link = []
+                node.values.forEach(value => {
+                    link.push(parseInt(value.values[0]['regionflow_2005']))
+                })
+                links.push(link)
+            })
+
+
+            names = nodes
+            const chord = d3.chord()
+            .padAngle(0.05)
+            .sortSubgroups(d3.descending)
+            (links)
+
+            console.log(chord)
+
+            const width = getSVGAttribute("width")
+            const height = getSVGAttribute("height")
+            const innerRadius = Math.min(width, height) * .40
+            const outerRadius = innerRadius * 1.05
+
+            const chart = d3.select("#chart").append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+            chart.append("g")
+                .selectAll("path")
+                .data(chord.groups)
+                .enter().append("path")
+                .style("fill", d => "#ccc")
+                .style("stroke", d => "#000")
+                .attr("d", d3.arc().innerRadius(innerRadius).outerRadius(outerRadius))
+
+            const ticks = chart.append("g")
+                .selectAll("g")
+                .data(chord.groups)
+                .enter()
+                .append("g")
+                .selectAll("g")
+                .data(groupTicks)
+                .enter()
+                .append("g")
+                .attr("transform", function (d) {
+                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
+                        + "translate(" + outerRadius + ",0)";
+                });
+
+            ticks.append("line")
+                .attr("x1", 1)
+                .attr("y1", 0)
+                .attr("x2", 5)
+                .attr("y2", 0)
+                .style("stroke", "#000");
+
+            ticks.append("text")
+                .attr("x", 8)
+                .attr("dy", ".35em")
+                .attr("text-anchor", function (d) {
+                    return d.angle > Math.PI ? "end" : null;
+                })
+                .attr("transform", function (d) {
+                    return d.angle > Math.PI ? "rotate(180)translate(-16)" : null;
+                })
+                .text(function (d) { return d.label; });
+
+                console.log(chord)
+            chart
+                .datum(chord)
+                .append("g")
+                .selectAll("path")
+                .data(d => d)
+                .enter()
+                .append("path")
+                .style("fill", "#f00")
+                .attr("d", d3.ribbon().radius(innerRadius))
+                .style("opacity", 0.5)
+                .on("mouseover", mouseover)
+                .on("mouseout", mouseout);
+
+            function mouseover(d,i) {
+                console.log(this)
+                d3.select(this).style("fill", "#000")
+            }
+
+            function mouseout(d,i) {
+            }
+
+            /** Returns an array of tick angles and labels, given a group. */
+            function groupTicks(d) {
+                var k = (d.endAngle - d.startAngle) / d.value;
+                return d3.range(0, d.value, 1000000).map(function (v, i) {
+                    return {
+                        angle: v * k + d.startAngle,
+                        label: (parseInt(v) / 1000000)  + " Mio"
+                    };
+                });
+            }
+        })
+    </script>
+</body>
+
+</html>

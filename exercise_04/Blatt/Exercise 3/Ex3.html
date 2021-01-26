@@ -23,29 +23,58 @@
         <script src="//d3js.org/d3.v5.min.js"></script>
         <script src="https://unpkg.com/d3-delaunay@5"></script>
         <script>
-            var width = 1800;
+            var width = 1200;
             var height = 700;
             var data;
 
+            var minLat, maxLat, minLon, maxLon;
+            var lonScale, latScale;
+
+            function updateScales() {
+                lonScale = d3.scaleLinear().domain([maxLon, minLon]).range([width, 0]);
+                latScale = d3.scaleLinear().domain([maxLat, minLat]).range([0, height]);
+            }
+
             var transform = (list) => {
                 let result = [];
-                result.push(width + list[1]*10);
-                result.push(height - list[0]*10);
+                result.push(lonScale(list[1]));
+                result.push(latScale(list[0]));
                 return result;
             };
 
+            function fetchMinMaxLatLonFromData(data) {
+                let lats = data.map((e) => +e.lat);
+                let lons = data.map((e) => +e.lon);
+                console.log(lats);
+                console.log(lons);
+                minLat = d3.min(lats);
+                minLon = d3.min(lons);
+                maxLat = d3.max(lats);
+                maxLon = d3.max(lons);
+                console.log('minLat ' + minLat);
+                console.log('minLon ' + minLon);
+                console.log('maxLat ' + maxLat);
+                console.log('maxLon ' + maxLon);
+                updateScales();
+            }
+
+            var color = d3.scaleOrdinal().range(d3.schemeTableau10);
+
             d3.csv('Data/postoffices_usa.csv').then(function (csvData) {
                 let mainList = [];
+                fetchMinMaxLatLonFromData(csvData);
                 csvData.forEach((row) => {
-                    let lat = parseFloat(row.lat);
-                    let lon = parseFloat(row.lon);
+                    let lat = +row.lat;
+                    let lon = +row.lon;
                     mainList.push(transform([lat, lon]));
                 });
                 data = mainList;
-                console.log("contains " + data.length + " elements");
+
+                console.log('contains ' + data.length + ' elements');
 
                 var delaunay = d3.Delaunay.from(data);
-                var voronoi = delaunay.voronoi();
+                var voronoi = delaunay.voronoi([0, 0, width, height]);
+                var renderedVoronoi = voronoi.render();
 
                 delaunay.findAll = function (x, y, radius) {
                     const points = delaunay.points,
@@ -72,20 +101,31 @@
                     .attr('width', width)
                     .attr('height', height);
 
-                var circles = svg
+                var circleSpace = svg.append('g').attr('id', 'circle-space');
+
+                
+
+                svg.append('g')
+                    .selectAll('path')
+                    .data(data)
+                    .enter()
+                    .append('path')
+                    .attr('d', (d, i) => voronoi.renderCell(i))
+                    .attr('fill', (d, i) => color(i))
+                    .attr('style', 'opacity: .2')
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', '.5');
+
+                    var circles = circleSpace
                     .selectAll('circle')
                     .data(data)
                     .join('circle')
+                    .attr('fill', 'green')
                     .attr('cx', (d) => d[0])
                     .attr('cy', (d) => d[1])
                     .attr('r', 1);
 
-                voronoi.render();
-
-                console.log(d3.geoVoronoi());
-
-                var results = delaunay.findAll(width / 2, height / 2, 25);
-                circles.attr('fill', (_, i) => (results.indexOf(i) > -1 ? 'orange' : 'green'));
+                //var results = delaunay.findAll(width / 2, height / 2, 25);
             });
         </script>
     </body>

@@ -23,8 +23,8 @@
         <script src="//d3js.org/d3.v5.min.js"></script>
         <script src="https://unpkg.com/d3-delaunay@5"></script>
         <script>
-            var width = 960;
-            var height = 500;
+            var width = 1800;
+            var height = 700;
 
             var data = d3.range(200).map(function (d) {
                 var y = d3.randomNormal(height / 2, 80)();
@@ -36,65 +36,63 @@
                 return [x, y];
             });
 
-            var delaunay = d3.Delaunay.from(data);
-
-            delaunay.findAll = function (x, y, radius) {
-                const points = delaunay.points,
-                    results = [],
-                    seen = [],
-                    queue = [delaunay.find(x, y)];
-
-                while (queue.length) {
-                    const q = queue.pop();
-                    if (seen[q]) continue;
-                    seen[q] = true;
-                    if (Math.hypot(x - points[2 * q], y - points[2 * q + 1]) < radius) {
-                        results.push(q);
-                        for (const p of delaunay.neighbors(q)) queue.push(p);
-                    }
-                }
-
-                return results;
+            var transform = (list) => {
+                let result = [];
+                result.push(width + list[1]*10);
+                result.push(height - list[0]*10);
+                return result;
             };
 
-            var svg = d3.select('body').append('svg').attr('width', width).attr('height', height);
+            d3.csv('Data/postoffices_usa.csv').then(function (csvData) {
+                let mainList = [];
+                csvData.forEach((row) => {
+                    let lat = parseInt(row.lat);
+                    let lon = parseInt(row.lon);
+                    mainList.push(transform([lat, lon]));
+                });
+                console.log('MAIN LIST');
+                console.log(mainList);
+                console.log(data);
+                data = mainList;
 
-            var circles = svg
-                .selectAll('circle')
-                .data(data)
-                .join('circle')
-                .attr('cx', (d) => d[0])
-                .attr('cy', (d) => d[1])
-                .attr('r', 3);
+                var delaunay = d3.Delaunay.from(data);
 
-            var results = delaunay.findAll(width / 2, height / 2, 25);
-            circles.attr('fill', (_, i) => (results.indexOf(i) > -1 ? 'orange' : 'green'));
+                delaunay.findAll = function (x, y, radius) {
+                    const points = delaunay.points,
+                        results = [],
+                        seen = [],
+                        queue = [delaunay.find(x, y)];
 
-            var circle = svg
-                .append('circle')
-                .attr('cx', width / 2)
-                .attr('cy', height / 2)
-                .attr('r', 25)
-                .attr('fill', 'none')
-                .attr('stroke', 'black')
-                .attr('stroke-width', 1);
+                    while (queue.length) {
+                        const q = queue.pop();
+                        if (seen[q]) continue;
+                        seen[q] = true;
+                        if (Math.hypot(x - points[2 * q], y - points[2 * q + 1]) < radius) {
+                            results.push(q);
+                            for (const p of delaunay.neighbors(q)) queue.push(p);
+                        }
+                    }
 
-            circle
-                .transition()
-                .attrTween('r', function () {
-                    var node = this;
-                    return function (t) {
-                        var r = d3.interpolate(25, 200)(t);
-                        var results = delaunay.findAll(width / 2, height / 2, r);
-                        console.log(results);
-                        circles.attr('fill', (_, i) =>
-                            results.indexOf(i) > -1 ? 'orange' : 'green'
-                        );
-                        return r;
-                    };
-                })
-                .duration(2000)
-                .delay(750);
+                    return results;
+                };
+
+                var svg = d3
+                    .select('body')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height);
+
+                var circles = svg
+                    .selectAll('circle')
+                    .data(data)
+                    .join('circle')
+                    .attr('cx', (d) => d[0])
+                    .attr('cy', (d) => d[1])
+                    .attr('r', 3);
+
+                var results = delaunay.findAll(width / 2, height / 2, 25);
+                circles.attr('fill', (_, i) => (results.indexOf(i) > -1 ? 'orange' : 'green'));
+            });
         </script>
     </body>
 </html>

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <style>
         svg {
-            font: 10px sans-serif;
+            font: 12px sans-serif;
         }
 
         * {
@@ -26,7 +26,7 @@
 <body>
     <h1>Spaß, Spaß, Spaß</h1>
     <h4>Yuhuuuuu.</h4>
-    <svg id="chart" width="1000" height="600" />
+    <svg id="chart" width="1000" height="1000" />
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
 
@@ -42,28 +42,6 @@
             const svg = document.getElementById("chart")
             return svg.attributes[s].value
         }
-
-        /*const chord = d3.chord()
-            .padAngle(0.05)
-            .sortSubgroups(d3.descending)
-            ([
-                [0, 0, 0, 0, 0, 0, 0, 0, 20, 130, 60, 0, 150, 20, 90, 2051],
-                [0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 90, 0, 0, 0, 2580, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 80, 0, 10, 784, 60, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 480, 0, 20, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 80, 195, 10, 30, 90, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 149, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 5212, 70, 0, 20, 50, 110, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 276, 40, 40, 0, 0, 0, 0, 0],
-                [20, 10, 10, 0, 20, 0, 0, 276, 0, 0, 0, 0, 0, 0, 0, 0],
-                [130, 0, 0, 0, 20, 0, 5212, 40, 0, 0, 0, 0, 0, 0, 0, 0],
-                [60, 90, 80, 40, 80, 149, 70, 40, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 195, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [150, 0, 10, 480, 10, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [20, 0, 784, 0, 30, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [90, 2580, 60, 20, 90, 0, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [2051, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            ])*/
 
         d3.csv('Data/MigrationFlow.csv').then((data) => {
 
@@ -87,28 +65,43 @@
             })
 
 
-            names = nodes
             const chord = d3.chord()
-            .padAngle(0.05)
-            .sortSubgroups(d3.descending)
-            (links)
-
-            console.log(chord)
+                .padAngle(0.05)
+                .sortSubgroups(d3.descending)
+                (links)
 
             const width = getSVGAttribute("width")
             const height = getSVGAttribute("height")
-            const innerRadius = Math.min(width, height) * .40
-            const outerRadius = innerRadius * 1.05
+            const innerRadius = Math.min(width, height) * .38
+            const outerRadius = innerRadius * 1.1
 
             const chart = d3.select("#chart").append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
             chart.append("g")
+                .attr("id", "outerArcs")
+                .attr("number", (d, i) => i)
                 .selectAll("path")
                 .data(chord.groups)
                 .enter().append("path")
                 .style("fill", d => "#ccc")
                 .style("stroke", d => "#000")
+                .attr("id", (d, i) => "outerArc_" + i)
                 .attr("d", d3.arc().innerRadius(innerRadius).outerRadius(outerRadius))
+                .on("mouseover", mouseoverArc)
+                .on("mouseout", mouseoutArc)
+
+            chart.append("g")
+                .attr("id", "arcTexts")
+                .selectAll("text")
+                .data(nodes)
+                .enter().append("text")
+                .attr("x", 5)
+                .attr("dy", 25)
+                .append("textPath")
+                .attr("xlink:href", (d, i) => "#outerArc_" + i)
+                .text(d => d.id == "Oceania" ? "*" : d.id)
+                .on("mouseover", mouseoverArc)
+                .on("mouseout", mouseoutArc)
 
             const ticks = chart.append("g")
                 .selectAll("g")
@@ -142,7 +135,6 @@
                 })
                 .text(function (d) { return d.label; });
 
-                console.log(chord)
             chart
                 .datum(chord)
                 .append("g")
@@ -150,18 +142,30 @@
                 .data(d => d)
                 .enter()
                 .append("path")
+                .attr("class", "migration")
                 .style("fill", "#f00")
                 .attr("d", d3.ribbon().radius(innerRadius))
                 .style("opacity", 0.5)
                 .on("mouseover", mouseover)
                 .on("mouseout", mouseout);
 
-            function mouseover(d,i) {
-                console.log(this)
+            function mouseover(d, i) {
                 d3.select(this).style("fill", "#000")
             }
 
-            function mouseout(d,i) {
+            function mouseout(d, i) {
+                d3.select(this).style("fill", "#f00")
+            }
+
+            function mouseoverArc(d, i) {
+                id = this.id.split("_")[1]
+                d3.selectAll(".migration")
+                    .style("fill", d => d.source.index == id || d.target.index == id ? "#000" : "#f00")
+            }
+
+            function mouseoutArc(d, i) {
+                d3.selectAll(".migration")
+                    .style("fill", "#f00")
             }
 
             /** Returns an array of tick angles and labels, given a group. */
@@ -170,12 +174,13 @@
                 return d3.range(0, d.value, 1000000).map(function (v, i) {
                     return {
                         angle: v * k + d.startAngle,
-                        label: (parseInt(v) / 1000000)  + " Mio"
+                        label: (parseInt(v) / 1000000) + " Mio"
                     };
                 });
             }
         })
     </script>
 </body>
+<p>* Oceania</p>
 
 </html>

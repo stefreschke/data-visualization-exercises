@@ -22,11 +22,19 @@
     <body>
         <script src="//d3js.org/d3.v5.min.js"></script>
         <script src="https://unpkg.com/d3-delaunay@5"></script>
+        <h1>asdf</h1>
+        <h4>asdf</h4>
+        <div class="slidecontainer">
+            <input type="range" min="1" max="100" value="50" class="slider" id="myRange">
+        </div>
         <script>
-            var width = 1200;
-            var height = 700;
+            var width = 1100;
+            var height = 650;
             var data;
+            var stateCodes = [];
+            var counties = [];
 
+            const offset = 5;
             var minLat, maxLat, minLon, maxLon;
             var lonScale, latScale;
 
@@ -45,28 +53,30 @@
             function fetchMinMaxLatLonFromData(data) {
                 let lats = data.map((e) => +e.lat);
                 let lons = data.map((e) => +e.lon);
-                console.log(lats);
-                console.log(lons);
-                minLat = d3.min(lats);
-                minLon = d3.min(lons);
-                maxLat = d3.max(lats);
-                maxLon = d3.max(lons);
-                console.log('minLat ' + minLat);
-                console.log('minLon ' + minLon);
-                console.log('maxLat ' + maxLat);
-                console.log('maxLon ' + maxLon);
+                minLat = d3.min(lats) - offset;
+                minLon = d3.min(lons) - offset;
+                maxLat = d3.max(lats) + offset;
+                maxLon = d3.max(lons) + offset;
                 updateScales();
             }
 
+            function isNotHirstorical(row) {
+                return !row['name'].endsWith('(historical)');
+            }
+
             var color = d3.scaleOrdinal().range(d3.schemeTableau10);
+
+            var svg = d3.select('body').append('svg').attr('width', width).attr('height', height);
 
             d3.csv('Data/postoffices_usa.csv').then(function (csvData) {
                 let mainList = [];
                 fetchMinMaxLatLonFromData(csvData);
                 csvData.forEach((row) => {
-                    let lat = +row.lat;
-                    let lon = +row.lon;
-                    mainList.push(transform([lat, lon]));
+                    if (isNotHirstorical(row)) {
+                        let lat = +row.lat;
+                        let lon = +row.lon;
+                        mainList.push(transform([lat, lon]));
+                    }
                 });
                 data = mainList;
 
@@ -95,36 +105,58 @@
                     return results;
                 };
 
-                var svg = d3
-                    .select('body')
-                    .append('svg')
-                    .attr('width', width)
-                    .attr('height', height);
+                d3.csv('Data/count_usa.csv').then(function (csvData) {
+                    csvData.forEach((d) => {
+                        let dataSet = JSON.parse(d.json_object);
+                        dataSet.county = d.county;
+                        let stateCode = d.state_code;
+                        dataSet.state_code = stateCode;
+                        if (!stateCodes.includes(stateCode)) {
+                            stateCodes.push(stateCode);
+                        }
+                        counties.push(dataSet);
+                    });
 
-                var circleSpace = svg.append('g').attr('id', 'circle-space');
+                    var countySpace = svg.append('g').attr('id', 'county-space');
+                    var circleSpace = svg.append('g').attr('id', 'circle-space');
+                    var cellSpace = svg.append('g').attr('id', 'cell-space');
 
-                
-
-                svg.append('g')
-                    .selectAll('path')
-                    .data(data)
-                    .enter()
-                    .append('path')
-                    .attr('d', (d, i) => voronoi.renderCell(i))
-                    .attr('fill', (d, i) => color(i))
-                    .attr('style', 'opacity: .2')
-                    .attr('stroke', 'black')
-                    .attr('stroke-width', '.5');
+                    cellSpace
+                        .selectAll('path')
+                        .data(data)
+                        .enter()
+                        .append('path')
+                        .attr('d', (d, i) => voronoi.renderCell(i))
+                        .attr('fill', (d, i) => color(i))
+                        .attr('style', 'opacity: .2')
+                        .attr('stroke', 'black')
+                        .attr('stroke-width', '.5');
 
                     var circles = circleSpace
-                    .selectAll('circle')
-                    .data(data)
-                    .join('circle')
-                    .attr('fill', 'green')
-                    .attr('cx', (d) => d[0])
-                    .attr('cy', (d) => d[1])
-                    .attr('r', 1);
+                        .selectAll('circle')
+                        .data(data)
+                        .join('circle')
+                        .attr('fill', 'green')
+                        .attr('cx', (d) => d[0])
+                        .attr('cy', (d) => d[1])
+                        .attr('r', 1);
 
+                    countySpace
+                        .selectAll('polygon')
+                        .data(counties)
+                        .enter()
+                        .append('polygon')
+                        .attr('points', (d) =>
+                            d.coordinates[0]
+                                .map((d) => [lonScale(d[0]), latScale(d[1])].join(','))
+                                .join(' ')
+                        )
+                        .style('fill', (d) => color(stateCodes.indexOf(d.state_code)))
+                        .style('opacity', '.5')
+                        .style('stroke', 'black')
+                        .style('stroke-opacity', '.2')
+                        .style('stroke-width', '1');
+                });
                 //var results = delaunay.findAll(width / 2, height / 2, 25);
             });
         </script>

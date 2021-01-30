@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <style>
         svg {
-            font: 10px sans-serif;
+            font: 12px sans-serif;
         }
 
         * {
@@ -24,9 +24,9 @@
 </head>
 
 <body>
-    <h1>Spaß, Spaß, Spaß</h1>
-    <h4>Yuhuuuuu.</h4>
-    <svg id="chart" width="1000" height="600" />
+    <h1>Migration 2005</h1>
+    <h4>The absolute number of people migrating between or within specified regions.</h4>
+    <svg id="chart" width="1000" height="1000" />
     <script src="//d3js.org/d3.v5.min.js"></script>
     <script>
 
@@ -43,9 +43,6 @@
             return svg.attributes[s].value
         }
 
-        const height = getSVGAttribute("height")
-        const width = getSVGAttribute("width")
-
         d3.csv('Data/MigrationFlow.csv').then((data) => {
 
             var nested = d3.nest()
@@ -60,212 +57,131 @@
                 nodeObj = {}
                 nodeObj['id'] = node.key
                 nodes.push(nodeObj)
+                link = []
                 node.values.forEach(value => {
-                    linkObj = {}
-                    linkObj['source'] = node.key
-                    linkObj['target'] = value.key
-                    linkObj['weight'] = value.values[0]['regionflow_2005']
-                    links.push(linkObj)
+                    link.push(parseInt(value.values[0]['regionflow_2005']))
                 })
+                links.push(link)
             })
 
-            var label = {
-                'nodes': [],
-                'links': []
-            };
 
-            nodes.forEach(function (d, i) {
-                label.nodes.push({ node: d });
-                label.nodes.push({ node: d });
-                label.links.push({
-                    source: i * 2,
-                    target: i * 2 + 1
-                });
-            });
+            const chord = d3.chord()
+                .padAngle(0.05)
+                .sortSubgroups(d3.descending)
+                (links)
 
-            console.log(nodes)
-            console.log(links)
-            console.log(label)
+            const width = getSVGAttribute("width")
+            const height = getSVGAttribute("height")
+            const innerRadius = Math.min(width, height) * .38
+            const outerRadius = innerRadius * 1.1
 
-            const chart = d3.select("#chart")
+            const chart = d3.select("#chart").append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-            var labelLayout = d3.forceSimulation(label.nodes)
-                .force("charge", d3.forceManyBody().strength(-50))
-                .force("link", d3.forceLink(label.links).distance(0).strength(2));
+            chart.append("g")
+                .attr("id", "outerArcs")
+                .attr("number", (d, i) => i)
+                .selectAll("path")
+                .data(chord.groups)
+                .enter().append("path")
+                .style("fill", d => "#ccc")
+                .style("stroke", d => "#000")
+                .attr("id", (d, i) => "outerArc_" + i)
+                .attr("d", d3.arc().innerRadius(innerRadius).outerRadius(outerRadius))
+                .on("mouseover", mouseoverArc)
+                .on("mouseout", mouseoutArc)
 
-            var graphLayout = d3.forceSimulation(nodes)
-                .force("charge", d3.forceManyBody().strength(3000))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("x", d3.forceX(width / 2).strength(0.3))
-                .force("y", d3.forceY(height / 2).strength(0.3))
-                .force("link", d3.forceLink(links).id(function (d) { return d.id; }).distance(300).strength(1))
-                .on("tick", ticked);
-
-            var adjlist = [];
-
-            links.forEach(function (d) {
-                adjlist[d.source.index + "-" + d.target.index] = true;
-                adjlist[d.target.index + "-" + d.source.index] = true;
-            });
-
-            function neigh(a, b) {
-                return a == b || adjlist[a + "-" + b];
-            }
-
-
-            var container = chart.append("g");
-
-            chart.call(
-                d3.zoom()
-                    .scaleExtent([.1, 4])
-                    .on("zoom", function () { container.attr("transform", d3.event.transform); })
-            );
-
-            var linkDom = container.append("g").attr("class", "links")
-                .selectAll("line")
-                .data(links)
-                .enter()
-                .append("line")
-                .attr("stroke", "#aaa")
-                .attr("stroke-width", "1px");
-
-            var nodeDom = container.append("g").attr("class", "nodes")
-                .selectAll("g")
-                .data(nodes)
-                .enter()
-                .append("circle")
-                .attr("r", 5)
-                .attr("fill", "steelblue")
-
-            nodeDom.on("mouseover", focus).on("mouseout", unfocus);
-
-            nodeDom.call(
-                d3.drag()
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended)
-            );
-
-            /*var labelNode = container.append("g").attr("class", "labelNodes")
+            chart.append("g")
+                .attr("id", "arcTexts")
                 .selectAll("text")
-                .data(label.nodes)
+                .data(nodes)
+                .enter().append("text")
+                .attr("x", 5)
+                .attr("dy", 25)
+                .append("textPath")
+                .attr("xlink:href", (d, i) => "#outerArc_" + i)
+                .text(d => d.id == "Oceania" ? "*" : d.id)
+                .on("mouseover", mouseoverArc)
+                .on("mouseout", mouseoutArc)
+
+            const ticks = chart.append("g")
+                .selectAll("g")
+                .data(chord.groups)
                 .enter()
-                .append("text")
-                .text(function (d, i) { return i % 2 == 0 ? "" : d.node['region_orig']; })
-                .style("fill", "#555")
-                .style("font-family", "Arial")
-                .style("font-size", 12)
-                .style("pointer-events", "none"); // to prevent mouseover/drag capture*/
-
-            nodeDom.on("mouseover", focus).on("mouseout", unfocus);
-
-            function ticked() {
-
-                nodeDom.call(updateNode);
-                linkDom.call(updateLink);
-
-                labelLayout.alphaTarget(0.3).restart();
-                /*labelNode.each(function (d, i) {
-                    if (i % 2 == 0) {
-                        d.x = d.node.x;
-                        d.y = d.node.y;
-                    } else {
-                        var b = this.getBBox();
-
-                        var diffX = d.x - d.node.x;
-                        var diffY = d.y - d.node.y;
-
-                        var dist = Math.sqrt(diffX * diffX + diffY * diffY);
-
-                        var shiftX = b.width * (diffX - dist) / (dist * 2);
-                        shiftX = Math.max(-b.width, Math.min(0, shiftX));
-                        var shiftY = 16;
-                        this.setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
-                    }
-                }); */
-                //labelNode.call(updateNode);
-
-            }
-
-            function fixna(x) {
-                if (isFinite(x)) return x;
-                return 0;
-            }
-
-            function focus(d) {
-                var index = d3.select(d3.event.target).datum().index;
-                nodeDom.style("opacity", function (o) {
-                    return neigh(index, o.index) ? 1 : 0.1;
+                .append("g")
+                .selectAll("g")
+                .data(groupTicks)
+                .enter()
+                .append("g")
+                .attr("transform", function (d) {
+                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
+                        + "translate(" + outerRadius + ",0)";
                 });
-                /*labelNode.attr("display", function (o) {
-                    return neigh(index, o.nodeDom.index) ? "block" : "none";
-                });*/
-                linkDom.style("opacity", function (o) {
-                    return o.source.index == index || o.target.index == index ? 1 : 0.1;
-                });
+
+            ticks.append("line")
+                .attr("x1", 1)
+                .attr("y1", 0)
+                .attr("x2", 5)
+                .attr("y2", 0)
+                .style("stroke", "#000");
+
+            ticks.append("text")
+                .attr("x", 8)
+                .attr("dy", ".35em")
+                .attr("text-anchor", function (d) {
+                    return d.angle > Math.PI ? "end" : null;
+                })
+                .attr("transform", function (d) {
+                    return d.angle > Math.PI ? "rotate(180)translate(-16)" : null;
+                })
+                .text(function (d) { return d.label; });
+
+            chart
+                .datum(chord)
+                .append("g")
+                .selectAll("path")
+                .data(d => d)
+                .enter()
+                .append("path")
+                .attr("class", "migration")
+                .style("fill", "#f00")
+                .attr("d", d3.ribbon().radius(innerRadius))
+                .style("opacity", 0.5)
+                .on("mouseover", mouseover)
+                .on("mouseout", mouseout);
+
+            function mouseover(d, i) {
+                d3.select(this).style("fill", "#000")
             }
 
-            function unfocus() {
-                //labelNode.attr("display", "block");
-                nodeDom.style("opacity", 1);
-                linkDom.style("opacity", 1);
+            function mouseout(d, i) {
+                d3.select(this).style("fill", "#f00")
             }
 
-            function updateLink(link) {
-                link.attr("x1", function (d) { return fixna(d.source.x); })
-                    .attr("y1", function (d) { return fixna(d.source.y); })
-                    .attr("x2", function (d) { return fixna(d.target.x); })
-                    .attr("y2", function (d) { return fixna(d.target.y); });
+            function mouseoverArc(d, i) {
+                id = this.id.split("_")[1]
+                d3.selectAll(".migration")
+                    .style("fill", d => d.source.index == id || d.target.index == id ? "#000" : "#f00")
             }
 
-            function updateNode(node) {
-                node.attr("transform", function (d) {
-                    return "translate(" + fixna(d.x) + "," + fixna(d.y) + ")";
+            function mouseoutArc(d, i) {
+                d3.selectAll(".migration")
+                    .style("fill", "#f00")
+            }
+
+            /** Returns an array of tick angles and labels, given a group. */
+            function groupTicks(d) {
+                var k = (d.endAngle - d.startAngle) / d.value;
+                return d3.range(0, d.value, 1000000).map(function (v, i) {
+                    return {
+                        angle: v * k + d.startAngle,
+                        label: (parseInt(v) / 1000000) + " Mio"
+                    };
                 });
             }
-
-            function dragstarted(d) {
-                d3.event.sourceEvent.stopPropagation();
-                if (!d3.event.active) graphLayout.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-            }
-
-            function dragged(d) {
-                d.fx = d3.event.x;
-                d.fy = d3.event.y;
-            }
-
-            function dragended(d) {
-                if (!d3.event.active) graphLayout.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-            }
-
-
-            var x_scale = d3.scaleLinear()
-                .domain([0, 1])
-                .range([width/2, width]);
-
-            var y_scale = d3.scaleLinear()
-                .domain([0, 1])
-                .range([height/2, height]);
-
-
-            chart.selectAll('line')
-                .transition().duration(1000)
-                .attr('x1', function (d) { return x_scale(Math.sin(index_to_rad(d.source.index))); })
-                .attr('x2', function (d) { return x_scale(Math.sin(index_to_rad(d.target.index))); })
-                .attr('y1', function (d) { return y_scale(Math.cos(index_to_rad(d.source.index))); })
-                .attr('y2', function (d) { return y_scale(Math.cos(index_to_rad(d.target.index))); });
-
-            chart.selectAll('circle')
-                .transition().duration(1000)
-                .attr('cx', function (d, i) { return x_scale(Math.sin(index_to_rad(i))); })
-                .attr('cy', function (d, i) { return y_scale(Math.cos(index_to_rad(i))); });
         })
-
     </script>
 </body>
-
+<p>* Oceania</p>
+<p>The width of an arc in a region symbolizes the number of people migrating from that region.</p>
+<p>Hover over an arc or over a region to highlight the migration flow.</p>
 </html>

@@ -16,6 +16,43 @@
             .label {
                 font-size: 12pt;
             }
+
+            /* Slider code taken from https://www.w3schools.com/howto/howto_js_rangeslider.asp*/
+            .slidecontainer {
+                width: 1100; /* Width of the outside container */
+            }
+
+            .slider {
+                -webkit-appearance: none; /* Override default CSS styles */
+                appearance: none;
+                width: 100%; /* Full-width */
+                height: 25px; /* Specified height */
+                background: #d3d3d3; /* Grey background */
+                outline: none; /* Remove outline */
+                opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+                -webkit-transition: 0.2s; /* 0.2 seconds transition on hover */
+                transition: opacity 0.2s;
+            }
+
+            .slider:hover {
+                opacity: 1; /* Fully shown on mouse-over */
+            }
+
+            .slider::-webkit-slider-thumb {
+                -webkit-appearance: none; /* Override default look */
+                appearance: none;
+                width: 25px; /* Set a specific slider handle width */
+                height: 25px; /* Slider handle height */
+                background: grey; /* Green background */
+                cursor: pointer; /* Cursor on hover */
+            }
+
+            .slider::-moz-range-thumb {
+                width: 25px; /* Set a specific slider handle width */
+                height: 25px; /* Slider handle height */
+                background: grey; /* Green background */
+                cursor: pointer; /* Cursor on hover */
+            }
         </style>
     </header>
 
@@ -25,14 +62,20 @@
         <h1>asdf</h1>
         <h4>asdf</h4>
         <div class="slidecontainer">
-            <input type="range" min="1" max="100" value="50" class="slider" id="myRange">
+            <input type="range" min="0" max="100" value="20" class="slider" id="myRange" />
         </div>
         <script>
             var width = 1100;
+            var slider = document.getElementById('myRange');
+            d3.select('slider').style('width', width);
+            // Update the current slider value (each time you drag the slider handle)
             var height = 650;
             var data;
             var stateCodes = [];
             var counties = [];
+            var voronoiCells;
+            var countyPolygons;
+            var postStationCircles;
 
             const offset = 5;
             var minLat, maxLat, minLon, maxLon;
@@ -121,18 +164,18 @@
                     var circleSpace = svg.append('g').attr('id', 'circle-space');
                     var cellSpace = svg.append('g').attr('id', 'cell-space');
 
-                    cellSpace
+                    voronoiCells = cellSpace
                         .selectAll('path')
                         .data(data)
                         .enter()
                         .append('path')
                         .attr('d', (d, i) => voronoi.renderCell(i))
                         .attr('fill', (d, i) => color(i))
-                        .attr('style', 'opacity: .2')
-                        .attr('stroke', 'black')
-                        .attr('stroke-width', '.5');
+                        .style('opacity', '.2')
+                        .style('stroke', 'black')
+                        .style('stroke-width', '.5');
 
-                    var circles = circleSpace
+                    postStationCircles = circleSpace
                         .selectAll('circle')
                         .data(data)
                         .join('circle')
@@ -141,7 +184,7 @@
                         .attr('cy', (d) => d[1])
                         .attr('r', 1);
 
-                    countySpace
+                    countyPolygons = countySpace
                         .selectAll('polygon')
                         .data(counties)
                         .enter()
@@ -152,13 +195,23 @@
                                 .join(' ')
                         )
                         .style('fill', (d) => color(stateCodes.indexOf(d.state_code)))
-                        .style('opacity', '.5')
+                        .style('opacity', '.8')
                         .style('stroke', 'black')
                         .style('stroke-opacity', '.2')
                         .style('stroke-width', '1');
                 });
                 //var results = delaunay.findAll(width / 2, height / 2, 25);
             });
+
+            function colorRedraw(voronoiValue) {
+                let counties = 100 - voronoiValue;
+                voronoiValue /= 100;
+                counties /= 100;
+                voronoiCells.style('opacity', voronoiValue);
+                countyPolygons.style('opacity', counties);
+            }
+
+            slider.oninput = () => colorRedraw(slider.value);
         </script>
     </body>
 </html>

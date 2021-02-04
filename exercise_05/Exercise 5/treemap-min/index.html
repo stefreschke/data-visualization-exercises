@@ -1,0 +1,333 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width initial-scale=1">
+
+    <title>treemap</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="fill">
+    <section class="container">
+        <header class="my-5">
+            <h1><span class="font-weight-bold"><a href="/index.html">treemap</a></span>
+                &#x2014; Introduction to Data Visualization</h1>
+            <p class="lead">Research branch of the treemap renderer of Seerene developed by the Computer Graphics
+                Systems Group at the HPI.</p>
+            <p class="mt-4">WebGL <span class="font-weight-bold">About Page</span>: <a
+                    href="https://webgl-operate.org/about.html">webgl-operate.org/about.html</a>
+                &emsp;|&emsp;WebGL <span class="font-weight-bold">Operate</span>: <a
+                    href="https://webgl-operate.org">webgl-operate.org</a></p>
+        </header>
+    </section>
+    <section class="container mt-5">
+        <div class="row">
+            <div class="col">
+                <canvas class="embed-responsive-item w-100" id="canvas" data-target="treemap"></canvas>
+            </div>
+        </div>
+
+        <script src="js/rxjs.umd.min.js"></script>
+        <script src="js/treemap.js"></script>
+        <script>
+
+            var gloperate = treemap.gloperate;
+
+            var config, renderer, visualization;
+
+
+            function initialize() {
+
+                var canvasElement = document.getElementById('canvas');
+                var isChrome = !!(window)['chrome'] &&
+                    (!!(window)['chrome']['webstore'] || !!(window)['chrome']['runtime']);
+
+                if (navigator.appVersion.indexOf('Mac') !== -1 && isChrome) {
+                    canvasElement.dataset.msqrdP = 'no-WEBGL_draw_buffers';
+                    console.warn('detected Chrome on MacOS, disabling WEBGL_draw_buffers');
+                }
+
+                canvas = new gloperate.Canvas(canvasElement, {
+                    alpha: false, antialias: false, depth: false, failIfMajorPerformanceCaveat: false,
+                    premultipliedAlpha: false, preserveDrawingBuffer: false, stencil: false,
+                });
+
+                var blocker = new gloperate.viewer.EventBlocker(canvas.element);
+                blocker.block('contextmenu');
+
+                var clearColor = canvas.clearColor = new gloperate.Color().fromHex('fafafa');
+                canvas.framePrecision = gloperate.Wizard.Precision.byte;
+
+                // The larger number is used since it introduces less noticeable change on interaction.
+                canvas.controller.multiFrameNumber = 64; /* This triggers goldenset64 to be used. */
+
+                // Workaround: Avoid a black screen being shown until the rendering pipeline is running
+                canvas.context.gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+                canvas.context.gl.clear(canvas.context.gl.COLOR_BUFFER_BIT);
+
+                window['canvas'] = canvas;
+                window['context'] = canvas.context;
+                window['controller'] = canvas.controller;
+            }
+
+
+            function configure() {
+
+                config = new treemap.Configuration();
+
+
+                // START HERE
+
+                // [0,1] an link from node 0 to node 1
+                config.topology = {
+                    edges: [
+                        [0, 1], [1, 10], [1, 11], [1, 12], [1, 13],
+                        [1, 3], [3, 30], [3, 31], [3, 32], [3, 33],
+                        [0, 2], [2, 4], [4, 40], [4, 41], [4, 42], [4, 43],
+                        [2, 20], [2, 21], [2, 22], [2, 23],
+                    ],
+                    format: 'tupled',
+                };
+
+                // metrics are inserted here
+                // order of data corresponds to order of tuples
+                config.buffers = [
+                    {
+                        identifier: 'Alpha', type: 'float32',
+                        data: new Float32Array(
+                            [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]),
+                    },
+                    { identifier: 'Beta', type: 'uint8', data: new Uint8Array(21) },
+                    {
+                        identifier: 'Gamma', type: 'uint8',
+                        data: new Uint8Array(
+                            [0, 0, 1, 2, 3, 4, 0, 5, 6, 7, 8, 0, 0, 9, 10, 11, 12, 13, 14, 15, 16]),
+                    },
+                    { identifier: 'Delta', type: 'float32', data: new Float32Array(21) },
+                    { identifier: 'Epsilon', type: 'uint8', data: new Uint8Array(21) },
+                ];
+
+                // buffer for transforming raw data
+                config.bufferViews = [
+                    {
+                        identifier: 'Weight', source: 'buffer:Alpha',
+                        transformations: [{ type: 'propagate-up', operation: 'sum' }],
+                    },
+                    {
+                        identifier: 'Beta-Transformed', source: 'buffer:Beta',
+                        transformations: [
+                            { type: 'range-transform', sourceRange: [0.0, 64.0], targetRange: [0.0, 0.75] }],
+                    },
+                    {
+                        identifier: 'Gamma-Normalized', source: 'buffer:Gamma',
+                        transformations: [{ type: 'normalize', operation: 'min-to-max' }],
+                    },
+                ];
+
+                // just colors
+                config.colors = [
+                    //{ identifier: 'emphasis', space: 'hex', value: '#00b0ff' },
+                    { identifier: 'emphasis', space: 'hex', value: '#ff0000' },
+                    { identifier: 'auxiliary', space: 'hex', values: ['#00aa5e', '#71237c'] },
+                    { identifier: 'inner', space: 'hex', values: ['#e8eaee', '#eef0f4'] },
+                    { identifier: 'leaf', space: 'hex', values: ['#ffffff', '#fed500', '#fe8500', '#e62325'] },
+                ];
+
+                // slice and dice with snake
+                config.layout = {
+                    algorithm: 'snake', weight: 'bufferView:Weight',
+                    parentPadding: { type: 'absolute', value: 0.02 },
+                    siblingMargin: { type: 'relative', value: 0.20 },
+                    accessoryPadding: {
+                        type: 'absolute', direction: 'bottom', value: [0.0, 0.04, 0.03],
+                        relativeAreaThreshold: 0.4, targetAspectRatio: 2.0,
+                    },
+                    cascade: false,
+                };
+
+                // how many labels should be displayed
+                config.labels = {
+                    innerNodeLayerRange: [1, 3],
+                    numTopInnerNodes: 4,
+                    numTopWeightNodes: 0,
+                    numTopHeightNodes: 3,
+                    numTopColorNodes: 3
+                };
+
+                config.geometry = {
+                    parentLayer: { showRoot: true },
+                    leafLayers: [
+                        {
+                            colorMap: 'color:leaf', height: 'bufferView:Beta-Transformed',
+                            colors: 'bufferView:Gamma-Normalized',
+                        },
+                        {
+                            colorMap: 'color:leaf', height: 'buffer:Delta',
+                            colors: 'buffer:Epsilon',
+                        },
+                    ],
+                    emphasis: { outline: new Array(), highlight: new Array() },
+                    levitate: 8,
+                    heightScale: 0.5,
+                };
+
+            }
+
+            var presets = [ // some color presets
+                'smithwalt:viridis', 'smithwalt:inferno', 'smithwalt:magma', 'smithwalt:plasma',
+                'marcosci:cividis',
+                'colorbrewer:Greys', 'colorbrewer:Spectral', 'colorbrewer:BrBG', 'colorbrewer:RdBu',
+                'colorbrewer:RdYlBu', 'colorbrewer:PuOr', 'colorbrewer:OrRd', 'colorbrewer:RdPu',
+                'colorbrewer:Accent', 'colorbrewer:Paired', 'colorbrewer:Pastel2', 'colorbrewer:Dark2',
+                'mikhailov:turbo'];
+
+            function randomize() {
+
+                var leaf = config.colors.find((schema) => schema.identifier === 'leaf');
+                if (leaf) {
+                    var preset = presets[Math.floor(Math.random() * presets.length)].split(':');
+                    var num = 3 + Math.floor(Math.random() * 3);
+
+                    gloperate.ColorScale.fromPreset('assets/' + preset[0] + '.json', preset[1], num).then((scale) => {
+                        if (Math.random() > 0.5)
+                            scale.invert();
+
+                        leaf.values = scale.colors.map((color) => color.hexRGB);
+
+                        config.altered.alter('colors');
+                        renderer.invalidate();
+                    });
+                }
+
+
+                var alpha = config.buffers.find((buffer) => buffer.identifier === 'Alpha');
+                if (alpha) {
+                    alpha.data = Float32Array.from({ length: 21 }, () => 1.0 + Math.random() * 4.0);
+                }
+
+                var beta = config.buffers.find((buffer) => buffer.identifier === 'Beta');
+                if (beta) {
+                    beta.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
+                }
+
+                var beta = config.buffers.find((buffer) => buffer.identifier === 'Beta');
+                if (beta) {
+                    beta.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
+                }
+
+                var delta = config.buffers.find((buffer) => buffer.identifier === 'Delta');
+                if (delta) {
+                    delta.data = Float32Array.from({ length: 21 }, () => Math.random() > 0.5 ?
+                        (Math.random() * 0.5) : 0.0);
+                }
+
+                var epsilon = config.buffers.find((buffer) => buffer.identifier === 'Epsilon');
+                if (epsilon) {
+                    epsilon.data = Uint8Array.from({ length: 21 }, () => Math.random() > 0.5 ? 1 : 0);
+                }
+
+                var trees = ['Abies Grandis', 'Acer Campestre', 'Acer Platanoides',
+                    'Acer Pseudoplatanus', 'Aesculus Hippocastanum', 'Alnus Glutinosa', 'Betula Pendula',
+                    'Canadensis', 'Carpinus Betulus', 'Castanea Sativa', 'Chaemcyparis Lawsoniana',
+                    'Corylus Avellana', 'Crataegus Monogyna', 'Fagus Sylvatica', 'Fraxinus Excelsior',
+                    'Ilex Aquifolium', 'Juglans Regia', 'Juniperus Communis', 'Larix Decidua', 'Myrica Gale',
+                    'Picea Abies', 'Pinus Nigra', 'Pinus Sylvestris', 'Platanus Hispanica', 'Populus Alba',
+                    'Populus Canescens', 'Populus Nigra', 'Populus Tremula', 'Prunus Spinosa',
+                    'Pseudotsuga Menziesii', 'Pyrus Communis', 'Quercus Ilex', 'Quercus Petraea',
+                    'Quercus Robur', 'Rhamnus Catharticus', 'Rhododendron Ponticum', 'Ribes Rubrum',
+                    'Rubus Fruticosus', 'Salix Alba', 'Salix Aurita', 'Salix Caprea', 'Salix Chrysocoma',
+                    'Salix Cinerea', 'Salix Fragilis', 'Salix Pentandra', 'Salix Repens', 'Salix Viminalis',
+                    'Sambucus Niger', 'Sorbus Aria', 'Sorbus Aucuparia', 'Taxus Baccata', 'Tillia Cordata',
+                    'Tillia Platyphyllos', 'Tillia Vulgaris', 'Tsuga Heterophylla', 'Ulex Europaeus',
+                    'Ulmus Glabra', 'Ulmus Minor', 'Ulmus Procera', 'Viburnum Opulus'];
+
+                var labels = new Map(trees.map((v, i) => [i, v]));
+                config.labels.callback = (idsToLabel, callback) => callback(labels);
+
+
+                config.altered.alter('geometry');
+                config.altered.alter('labels');
+                config.altered.alter('layout');
+
+                renderer.invalidate();
+            }
+
+            // Don't touch anything anymore'
+
+            initialize();
+            configure();
+
+
+            visualization = new treemap.Visualization();
+            renderer = visualization.renderer;
+
+            visualization.configuration = config;
+            canvas.renderer = renderer;
+
+            renderer.arrows = true; // hidden feature
+
+
+            randomize();
+            //window.setInterval(randomize, 2000);
+
+
+            renderer.navigation.nodeSelect$.subscribe((event) => {
+                var emphasis = visualization.configuration.geometry.emphasis;
+
+                var index = emphasis.highlight.indexOf(event.node);
+
+                if (index > -1) {
+                    emphasis.highlight.splice(index, 1);
+                } else {
+                    emphasis.highlight.push(event.node);
+                }
+
+                visualization.configuration.altered.alter('geometry.emphasis.highlight');
+                renderer.invalidate();
+            });
+
+            renderer.navigation.nodeEnter$.subscribe((event) => {
+                var emphasis = visualization.configuration.geometry.emphasis;
+
+                if (emphasis.outline && emphasis.outline[0] === event.node) {
+                    return;
+                }
+                emphasis.outline = [event.node];
+
+                visualization.configuration.altered.alter('geometry.emphasis.outline');
+                renderer.invalidate();
+            });
+
+            renderer.navigation.nodeLeave$.subscribe((event) => {
+                const emphasis = visualization.configuration.geometry.emphasis;
+                emphasis.outline = [];
+
+                visualization.configuration.altered.alter('geometry.emphasis.outline');
+                renderer.invalidate();
+            });
+
+
+
+
+        </script>
+
+        <section class="container">
+            <footer class="my-5 text-center">
+                <p class="mb-4"><img class="img-responsive" src="img/iconmonstr-favorite.svg"
+                        alt="iconmonstr-favorite"><img class="img-responsive" src="img/iconmonstr-tree.svg"
+                        alt="iconmonstr-tree"><img class="img-responsive" src="img/iconmonstr-map.svg"
+                        alt="iconmonstr-map"></p><small>&copy; 2013&ndash;2021 <a href="https://seerene.com">Seerene
+                        Inc.</a> All rights reserved.
+                    &emsp;|&emsp;<a href="https://seerene.com/privacy-policy/">Privacy Policy</a>
+                    &emsp;|&emsp;<a href="https://seerene.com/global-offices/#imprint/">Imprint</a>
+                    &emsp;|&emsp;Developed in collaboration with the <a href="https://hpi.de/doellner/index.html">Hasso
+                        Plattner Institute</a> and <a href="https://cginternals.gmbh">CG Internals</a>.</small>
+            </footer>
+        </section>
+</body>
+
+</html>

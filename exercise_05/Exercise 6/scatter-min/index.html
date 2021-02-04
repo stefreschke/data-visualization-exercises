@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width initial-scale=1">
+
+    <title>Scatterplot3D</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="fill">
+    <section class="container">
+        <header class="my-5">
+            <h1><span class="font-weight-bold"><a href="/index.html">ScatterGL</a></span>
+                &#x2014; Introduction to Data Visualization</h1>
+            <p class="lead">Implementing a scatter plot using WebGL (and webgl-operate).</p>
+            <p class="mt-4">WebGL <span class="font-weight-bold">About Page</span>: <a
+                    href="https://webgl-operate.org/about.html">webgl-operate.org/about.html</a>
+                &emsp;|&emsp;WebGL <span class="font-weight-bold">Operate</span>: <a
+                    href="https://webgl-operate.org">webgl-operate.org</a></p>
+        </header>
+    </section>
+    <section class="container mt-5">
+        <div class="row">
+            <div class="col">
+                <canvas class="embed-responsive-item w-100" id="canvas"></canvas>
+            </div>
+        </div>
+
+        <script src="js/rxjs.umd.min.js"></script>
+        <script src="js/webgl-operate.js"></script>
+        <script>
+
+        	var canvas, context, controller, gl, renderer;
+
+        	class Scatterplot3D extends gloperate.Renderer {
+
+        		_defaultFBO; 	// : gloperate:DefaultFramebuffer (inherits gloperate.Framebuffer)
+				
+				_camera; 		// : gloperate.Camera
+				_navigation; 	// : gloperate.Navigation
+
+				_points;		// : Float32Array
+				_pointsBuffer;  // : WebGLBuffer
+				_pointsProgram;	// : gloeprate.Program;
+
+				_lines;			// : Float32Array
+				_linesBuffer;  	// : WebGLBuffer
+				_linesProgram;	// : gloeprate.Program;
+
+				_labelPass;		// : gloperate.LabelRenderPass;
+				_labels;		// : Array of gloperate lables
+
+     			onInitialize(context, callback, eventProvider) {
+
+					this._defaultFBO = new gloperate.DefaultFramebuffer(context, 'DefaultFBO');
+					this._defaultFBO.initialize();
+        			this._defaultFBO.bind();
+
+
+        			// setup point rendering
+
+        			// refer to https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer for more information
+
+        			// >> CHANGE POINT POSITIONS, COLORS, AND SIZES HERE:
+
+        			this._points = new Float32Array([ // x, y, z, r, g, b, data,
+        				-1.0, -1.0, -1.0,  0.0, 0.0, 0.0,  Math.random() * 16 + 4.0,
+        				-1.0, -1.0, +1.0,  0.0, 0.0, 1.0,  Math.random() * 16 + 4.0,
+        				-1.0, +1.0, -1.0,  0.0, 1.0, 0.0,  Math.random() * 16 + 4.0,
+        				-1.0, +1.0, +1.0,  0.0, 1.0, 1.0,  Math.random() * 16 + 4.0,
+						+1.0, -1.0, -1.0,  1.0, 0.0, 0.0,  Math.random() * 16 + 4.0,
+        				+1.0, -1.0, +1.0,  1.0, 0.0, 1.0,  Math.random() * 16 + 4.0,
+        				+1.0, +1.0, -1.0,  1.0, 1.0, 0.0,  Math.random() * 16 + 4.0,
+        				+1.0, +1.0, +1.0,  1.0, 1.0, 1.0,  Math.random() * 16 + 4.0,
+        				]);
+
+        			// would be better to use gloperate.Buffer (VBOs) but requires more knowledge ...
+
+        			this._pointsBuffer = gl.createBuffer();
+        			gl.bindBuffer(gl.ARRAY_BUFFER, this._pointsBuffer);
+        			gl.bufferData(gl.ARRAY_BUFFER, this._points, gl.STATIC_DRAW);
+
+        			{ 
+						var vert = new gloperate.Shader(context, gl.VERTEX_SHADER, 'point.vert');
+        				vert.initialize(`
+							precision lowp float;
+
+						    layout(location = 0) in vec3 a_vertex;
+						    layout(location = 1) in vec3 a_color;
+						    layout(location = 2) in float a_data;
+
+							uniform mat4 u_viewProjection;
+
+							out vec4 v_color;
+
+							void main()
+							{
+							    v_color = vec4(a_color, 1.0);
+
+							    gl_Position = u_viewProjection * vec4(a_vertex, 1.0);
+							    gl_PointSize = a_data;
+							}
+        					`);
+        				
+        				var frag = new gloperate.Shader(context, gl.FRAGMENT_SHADER, 'point.frag');
+        				frag.initialize(`
+							precision lowp float;
+
+							layout(location = 0) out vec4 fragColor;
+
+							in vec4 v_color;
+
+							void main(void)
+							{
+								vec2 uv = gl_PointCoord.xy * 2.0 - 1.0;
+
+								float zz = dot(uv, uv);
+								if(zz > 1.0)
+        							discard;
+
+							    fragColor = v_color;
+							}
+        					`);
+
+        				this._pointsProgram = new gloperate.Program(context, 'PointProgram');
+        				this._pointsProgram.initialize([vert, frag], false);
+
+        				this._pointsProgram.link();
+        				this._pointsProgram.bind();
+
+        				this._pointsProgram.attribute('a_vertex', 0);
+        				this._pointsProgram.attribute('a_color', 1);
+        				this._pointsProgram.attribute('a_data', 2);
+        			}
+
+        			// setup line rendering
+
+        			// refer to https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer for more information
+
+					// >> CHANGE LINE POSITIONS AND COLORS HERE:
+
+        			this._lines = new Float32Array([ // x, y, z, r, g, b,
+        				-2.0, -1.1, -1.1,  1.0, 0.0, 1.0,
+        				+2.0, -1.1, -1.1,  1.0, 0.0, 1.0,
+        				-1.1, -2.0, -1.1,  1.0, 1.0, 0.0,
+        				-1.1, +2.0, -1.1,  1.0, 1.0, 0.0,
+        				-1.1, -1.1, -2.0,  0.0, 1.0, 1.0,
+        				-1.1, -1.1, +2.0,  0.0, 1.0, 1.0,
+        				]);
+
+        			this._linesBuffer = gl.createBuffer();
+        			gl.bindBuffer(gl.ARRAY_BUFFER, this._linesBuffer);
+        			gl.bufferData(gl.ARRAY_BUFFER, this._lines, gl.STATIC_DRAW);
+
+        			{ 
+						var vert = new gloperate.Shader(context, gl.VERTEX_SHADER, 'line.vert');
+        				vert.initialize(`
+							precision lowp float;
+
+						    layout(location = 0) in vec3 a_vertex;
+						    layout(location = 1) in vec3 a_color;
+
+							uniform mat4 u_viewProjection;
+
+							out vec4 v_color;
+
+							void main()
+							{
+							    v_color = vec4(a_color, 1.0);
+
+							    gl_Position = u_viewProjection * vec4(a_vertex, 1.0);
+							}
+        					`);
+        				
+        				var frag = new gloperate.Shader(context, gl.FRAGMENT_SHADER, 'line.frag');
+        				frag.initialize(`
+							precision lowp float;
+
+							layout(location = 0) out vec4 fragColor;
+
+							in vec4 v_color;
+
+							void main(void)
+							{
+							    fragColor = v_color;
+							}
+        					`);
+
+        				this._linesProgram = new gloperate.Program(context, 'LineProgram');
+        				this._linesProgram.initialize([vert, frag], false);
+
+        				this._linesProgram.link();
+        				this._linesProgram.bind();
+
+        				this._linesProgram.attribute('a_vertex', 0);
+        				this._linesProgram.attribute('a_color', 1);
+        			}
+
+ 					this._camera = new gloperate.Camera();
+            		this._camera.center = gloperate.vec3.fromValues(0.0, 0.0, 0.0);
+            		this._camera.up = gloperate.vec3.fromValues(0.0, 1.0, 0.0);
+            		this._camera.eye = gloperate.vec3.fromValues(0.0, 0.0, 4.0);
+            		this._camera.near = 0.1;
+            		this._camera.far = 16.0;
+
+            		this._navigation = new gloperate.Navigation(callback, eventProvider);
+        			this._navigation.camera = this._camera;
+
+        			// create and configure label pass
+
+					this._labelPass = new gloperate.LabelRenderPass(context);
+					this._labelPass.initialize();
+					this._labelPass.camera = this._camera;
+					this._labelPass.target = this._defaultFBO;
+					this._labelPass.depthMask = true;
+					this._labelPass.aaStepScale = 0.5;
+					this._labelPass.aaSampling = gloperate.LabelRenderPass.Sampling.Grid4x4;
+					this._labelPass.depthFunc = context.gl.LESS;
+
+			        gloperate.FontFace.fromFile('./assets/roboto.fnt', context)
+			            .then((fontFace) => {
+
+							// >> CHANGE LABELING TEXTS, POSITIONS, COLOR, AND MORE HERE:
+							// >> note: dynamic labels need to altered manually... (see on Frame)
+
+							var labels = new Array(3);
+
+							labels[0] = new gloperate.Position3DLabel(new gloperate.Text('Scatterplot'), gloperate.Label.Type.Static);
+							labels[0].lineAnchor = gloperate.Label.LineAnchor.Bottom;
+							labels[0].alignment = gloperate.Label.Alignment.Center;
+							labels[0].position = [0.0, 0.0, 0.0];
+							labels[0].direction = [1.0, 1.0, -1.0];
+							labels[0].up = [-1.5, 0.5, -1.0];
+							labels[0].fontSize = 0.3;
+							labels[0].fontSizeUnit = gloperate.Label.Unit.World;
+							labels[0].color.fromHex('#ffffff');
+
+							labels[1] = new gloperate.Position3DLabel(new gloperate.Text('3D'), gloperate.Label.Type.Static);
+							labels[1].lineAnchor = gloperate.Label.LineAnchor.Top;
+							labels[1].alignment = gloperate.Label.Alignment.Center;
+							labels[1].position = [-0.1, 0.2, 0.0];
+							labels[1].direction = [1.0, 1.0, -1.0];
+							labels[1].up = [-0.5, 1.5, +1.0];
+							labels[1].fontSize = 1.2;
+							labels[1].fontSizeUnit = gloperate.Label.Unit.World;
+							labels[1].color.fromHex('#888888');
+
+							labels[2] = new gloperate.Position3DLabel(new gloperate.Text('Probably the x-Axis'), gloperate.Label.Type.Static);
+							labels[2].lineAnchor = gloperate.Label.LineAnchor.Bottom;
+							labels[2].alignment = gloperate.Label.Alignment.Center;
+							labels[2].position = [0.0, -1.1, -1.1];
+							labels[2].up = [0.0, 0.0, -1.0];
+							labels[2].direction = [1.0, 0.0, 0.0];
+							labels[2].fontSize = 0.2;
+							labels[2].fontSizeUnit = gloperate.Label.Unit.World;
+							labels[2].color.fromHex('#ff00ff');
+
+							labels[3] = new gloperate.Projected3DLabel(new gloperate.Text('   Point'), gloperate.Label.Type.Dynamic);
+							labels[3].lineAnchor = gloperate.Label.LineAnchor.Bottom;
+							labels[3].alignment = gloperate.Label.Alignment.Left;
+							labels[3].position = [-1.0, +1.0, +1.0];
+							labels[3].fontSize = 16.0;
+							labels[3].fontSizeUnit = gloperate.Label.Unit.Mixed;
+							labels[3].color.fromHex('#00ffff');
+
+							for (var label of labels) {
+								label.fontFace = fontFace;
+							}
+							this._labelPass.labels = labels;
+							this._labelPass.update();
+
+							this._labels = labels;
+
+							this.invalidate(true);
+			            })
+			            .catch((reason) => gloperate.auxiliaries.log(
+			            	gloperate.auxiliaries.LogLevel.Error, reason));
+
+        			return true;
+    			}
+
+    			onUninitialize() {
+        			super.uninitialize();
+
+        			this._defaultFBO.uninitialize();
+
+					gl.deleteBuffer(this._pointsBuffer);
+        			this._pointsProgram.uninitialize();
+
+					gl.deleteBuffer(this._linesBuffer);
+        			this._linesProgram.uninitialize();
+
+        			this._labelPass.uninitialize();
+			    }
+
+    			onDiscarded() { 
+    				this._altered.alter('canvasSize');
+        			this._altered.alter('clearColor');
+        		}
+
+				onUpdate() { 
+					this._navigation.update();
+
+					return this._altered.any || this._camera.altered; // update only on change
+					// return true; // continuous rendering
+				}
+
+				onPrepare() { 
+			        if (this._altered.canvasSize) {
+            			this._camera.aspect = this._canvasSize[0] / this._canvasSize[1];
+            			this._camera.viewport = this._canvasSize;
+        			}
+
+					if (this._altered.clearColor) {
+            			this._defaultFBO.clearColor(this._clearColor);
+        			}
+
+        			this._altered.reset();
+        			this._camera.altered = false;
+        		}
+
+    			onFrame() {
+        		
+        			// clear previous rendering
+
+					this._defaultFBO.bind(); 
+        			this._defaultFBO.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT, true, false);
+
+					gl.viewport(0, 0, this._frameSize[0], this._frameSize[1]);
+
+        			gl.enable(gl.DEPTH_TEST);
+
+        			// render points
+
+			        this._pointsProgram.bind();
+			        gl.uniformMatrix4fv(this._pointsProgram.uniform('u_viewProjection'), 
+			        	gl.GL_FALSE, this._camera.viewProjection);
+
+			        gl.bindBuffer(gl.ARRAY_BUFFER, this._pointsBuffer);
+ 
+					// refer to https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer for more information
+
+ 					gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 
+ 						7 * Float32Array.BYTES_PER_ELEMENT, 0);
+				    gl.vertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 
+				    	7 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
+					gl.vertexAttribPointer(2, 1, gl.FLOAT, gl.FALSE, 
+				    	7 * Float32Array.BYTES_PER_ELEMENT, 6 * Float32Array.BYTES_PER_ELEMENT);				    
+					gl.enableVertexAttribArray(0);
+    				gl.enableVertexAttribArray(1);
+    				gl.enableVertexAttribArray(2);
+
+			        gl.drawArrays(gl.POINTS, 0, this._points.length / 7);
+			        gl.bindBuffer(gl.ARRAY_BUFFER, gloperate.Buffer.DEFAULT_BUFFER);
+
+					gl.disableVertexAttribArray(0);
+    				gl.disableVertexAttribArray(1);
+    				gl.disableVertexAttribArray(2);
+
+			        this._pointsProgram.unbind();
+
+
+        			// render lines
+
+        			this._linesProgram.bind();
+			        gl.uniformMatrix4fv(this._linesProgram.uniform('u_viewProjection'), 
+			        	gl.GL_FALSE, this._camera.viewProjection);
+
+			        gl.bindBuffer(gl.ARRAY_BUFFER, this._linesBuffer);
+
+					// refer to https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer for more information
+
+ 					gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 
+ 						6 * Float32Array.BYTES_PER_ELEMENT, 0);
+				    gl.vertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 
+				    	6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
+
+					gl.enableVertexAttribArray(0);
+    				gl.enableVertexAttribArray(1);
+
+			        gl.drawArrays(gl.LINES, 0, this._lines.length / 6);
+			        gl.bindBuffer(gl.ARRAY_BUFFER, gloperate.Buffer.DEFAULT_BUFFER);
+
+					gl.disableVertexAttribArray(0);
+    				gl.disableVertexAttribArray(1);
+
+			        this._linesProgram.unbind();
+
+				
+					// render labels
+
+					if(this._labels) { // force update dynamic labels
+						this._labels[3]._altered.alter('dynamic');
+					}
+					this._labelPass.update();
+        			this._labelPass.frame();
+					this._labelPass.unbind();
+
+
+        			// render more ...
+        		}
+
+    			onSwap() { }
+
+        	}
+
+
+        	function initialize() {
+
+        		var canvasElement = document.getElementById('canvas');
+				canvas = new gloperate.Canvas(canvasElement, {
+                    alpha: true, antialias: true, depth: true, failIfMajorPerformanceCaveat: false,
+                    premultipliedAlpha: false, preserveDrawingBuffer: false, stencil: false,
+                });
+
+                var blocker = new gloperate.viewer.EventBlocker(canvas.element);
+                blocker.block('contextmenu');
+
+        		canvasElement.addEventListener('click', (event) => {
+            		if (event.ctrlKey) { gloperate.viewer.Fullscreen.toggle(canvasElement); }
+        		});
+
+                context = canvas.context;
+                controller = canvas.controller;
+                gl = canvas.context.gl;
+
+                renderer = new Scatterplot3D();
+                canvas.renderer = renderer;
+            }
+
+			window.onload = function () {
+    			initialize();
+    		}
+
+        </script>
+
+        <section class="container">
+            <footer class="my-5 text-center">
+                <p class="mb-4">Developed in collaboration with the <a href="https://hpi.de/doellner/index.html">Hasso
+                        Plattner Institute</a> and <a href="https://cginternals.gmbh">CG Internals</a>.</small>
+            </footer>
+        </section>
+</body>
+
+</html>

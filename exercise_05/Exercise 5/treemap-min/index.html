@@ -193,9 +193,6 @@
                     var num = 9//3 + Math.floor(Math.random() * 3);
 
                     gloperate.ColorScale.fromPreset('assets/' + preset[0] + '.json', preset[1], num).then((scale) => {
-                        if (Math.random() > 0.5)
-                            scale.invert();
-
                         leaf.values = scale.colors.map((color) => color.hexRGB);
 
                         config.altered.alter('colors');
@@ -207,7 +204,7 @@
                 var alpha = config.buffers.find((buffer) => buffer.identifier === 'Alpha');
                 if (alpha) {
                     //alpha.data = Float32Array.from({ length: 21 }, () => 1.0 + Math.random() * 4.0);
-                    alpha.data = Float32Array.from({ length: 21 }, () => 0.1);
+                    alpha.data = Float32Array.from({ length: 21 }, () => Math.floor(Math.random() * 2) +1 );
                 }
 
                 //bestimmt scheinbar die Höhe, ab der ein Pfeil nach unten eingezeichnet wird

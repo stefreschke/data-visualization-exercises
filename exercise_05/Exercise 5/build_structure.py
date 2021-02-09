@@ -22,24 +22,23 @@ def traverse(path, counter):
         if entry.is_dir():
             new_counter, sub_edges = traverse(entry.path, counter + 1)
             if (len(sub_edges) > 0):
-                nodes[counter + 1] = {'name': entry.name, 'is_leave': False, 'path': entry.path}
+                nodes[counter + 1] = {'name': entry.name, 'is_leave': False, 'path': entry.path, 'loc': 0}
                 append_edges.append([self_count, counter + 1])
                 counter = new_counter
                 append_edges.extend(sub_edges)
 
         else:
             if entry.name.endswith(".cpp") or entry.name.endswith(".h") or entry.name.endswith(".py"):
-                nodes[counter + 1] = {'name': entry.name, 'is_leave': True, 'path': entry.path}
+                nodes[counter + 1] = {'name': entry.name, 'is_leave': True, 'path': entry.path, 'loc': calculateLinesOfCode(entry)}
                 append_edges.append([self_count, counter +1])
                 counter += 1
-                calculateLinesOfCode(entry)
             else:
                 continue
     return counter, append_edges
 
 print("Attenzione: Computing (several minutes) may take a while. Please be patient.")
 # Add source node
-nodes[0] = {'name': "source_repo", 'is_leave': False, 'path': "source_repo"}
+nodes[0] = {'name': "source_repo", 'is_leave': False, 'path': "source_repo", 'loc': 0}
 # Traverse dir
 ret_counter, ret_edges = traverse("source_repo", 0)
 
@@ -62,20 +61,28 @@ for key in sorted(nodes):
             commits_per_file.append(int(commit_counts_by_path[node['path']]))
         else:
             commits_per_file.append(0)
+    else:
+        commits_per_file.append(0)
 
 # Get number of authors per file
 authors_per_file = []
 for key in sorted(nodes):
     node = nodes[key]
     if node['is_leave']:
-        run = os.popen("cd source_repo; git blame -p " + node['path'][12:] + " | grep -e '^author ' | sort | uniq | wc -l")
-        authors_per_file.append(int(run.read().split("\n")[0]))
+        # run = os.popen("cd source_repo; git blame -p " + node['path'][12:] + " | grep -e '^author ' | sort | uniq | wc -l")
+        # authors_per_file.append(int(run.read().split("\n")[0]))
+        authors_per_file.append(0)
+    else:
+        authors_per_file.append(0)
 
-# Get labels
+# Get labels and lines of code
 labels = []
+loc = []
 for key in sorted(nodes):
-    print(key)
     labels.append(nodes[key]['name'])
+    loc.append(nodes[key]['loc'])
+
+
 
 
 print("Here are the results:")
@@ -85,6 +92,9 @@ print(ret_edges)
 
 print("Labels")
 print(labels)
+
+print("Lines of code")
+print(loc)
 
 print("Commits per file")
 print(commits_per_file)

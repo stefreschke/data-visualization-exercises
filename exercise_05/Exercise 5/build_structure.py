@@ -43,6 +43,7 @@ nodes[0] = {'name': "source_repo", 'is_leave': False, 'path': "source_repo"}
 # Traverse dir
 ret_counter, ret_edges = traverse("source_repo", 0)
 
+
 # Get number of commits
 run = os.popen('cd source_repo; git log --name-only --pretty=format: | sort | uniq -c')
 commit_count = run.read()
@@ -54,7 +55,7 @@ for i, line in enumerate(commit_count.split("\n")):
     commit_counts_by_path["source_repo/" + splitted[1]] = splitted[0]
 
 commits_per_file = []
-for key in nodes:
+for key in sorted(nodes):
     node = nodes[key]
     if node['is_leave']:
         if node['path'] in commit_counts_by_path:
@@ -64,7 +65,7 @@ for key in nodes:
 
 # Get number of authors per file
 authors_per_file = []
-for key in nodes:
+for key in sorted(nodes):
     node = nodes[key]
     if node['is_leave']:
         run = os.popen("cd source_repo; git blame -p " + node['path'][12:] + " | grep -e '^author ' | sort | uniq | wc -l")
@@ -72,7 +73,8 @@ for key in nodes:
 
 # Get labels
 labels = []
-for key in nodes:
+for key in sorted(nodes):
+    print(key)
     labels.append(nodes[key]['name'])
 
 

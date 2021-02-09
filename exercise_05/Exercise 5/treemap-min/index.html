@@ -151,10 +151,10 @@
 
                 // how many labels should be displayed
                 config.labels = {
-                    innerNodeLayerRange: [1, 3],
-                    numTopInnerNodes: 4,
+                    innerNodeLayerRange: [0, 3],
+                    numTopInnerNodes: 10,
                     numTopWeightNodes: 0,
-                    numTopHeightNodes: 3,
+                    numTopHeightNodes: 20,
                     numTopColorNodes: 3
                 };
 
@@ -189,8 +189,8 @@
 
                 var leaf = config.colors.find((schema) => schema.identifier === 'leaf');
                 if (leaf) {
-                    var preset = presets[Math.floor(Math.random() * presets.length)].split(':');
-                    var num = 3 + Math.floor(Math.random() * 3);
+                    var preset = "colorbrewer:RdYlGn".split(':');
+                    var num = 9//3 + Math.floor(Math.random() * 3);
 
                     gloperate.ColorScale.fromPreset('assets/' + preset[0] + '.json', preset[1], num).then((scale) => {
                         if (Math.random() > 0.5)
@@ -203,31 +203,40 @@
                     });
                 }
 
-
+                //scheinbar die Fläche
                 var alpha = config.buffers.find((buffer) => buffer.identifier === 'Alpha');
                 if (alpha) {
-                    alpha.data = Float32Array.from({ length: 21 }, () => 1.0 + Math.random() * 4.0);
+                    //alpha.data = Float32Array.from({ length: 21 }, () => 1.0 + Math.random() * 4.0);
+                    alpha.data = Float32Array.from({ length: 21 }, () => 0.1);
                 }
 
+                //bestimmt scheinbar die Höhe, ab der ein Pfeil nach unten eingezeichnet wird
                 var beta = config.buffers.find((buffer) => buffer.identifier === 'Beta');
                 if (beta) {
-                    beta.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
+                    //beta.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
+                    beta.data = Uint8Array.from({ length: 21 }, () => 32 );
                 }
 
-                var beta = config.buffers.find((buffer) => buffer.identifier === 'Beta');
-                if (beta) {
-                    beta.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
+                //scheinbar die Farbe
+                var gamma = config.buffers.find((buffer) => buffer.identifier === 'Gamma');
+                if (gamma) {
+                    gamma.data = Uint8Array.from({ length: 21 }, () => Math.floor(Math.random() * 3));
+                    //gamma.data = Uint8Array.from({ length: 21 }, () => Math.pow(Math.random(), 4.0) * 64);
                 }
 
+                //scheinbar die Höhe 
                 var delta = config.buffers.find((buffer) => buffer.identifier === 'Delta');
                 if (delta) {
-                    delta.data = Float32Array.from({ length: 21 }, () => Math.random() > 0.5 ?
-                        (Math.random() * 0.5) : 0.0);
+                    delta.data = Float32Array.from({ length: 21 }, () => Math.floor(Math.random() * 6)/3);
+                    //delta.data = Float32Array.from({ length: 21 }, () => Math.random() > 0.5 ?
+                      //  (Math.random() * 0.5) : 0.0);
                 }
 
+                //Stellt ein, ob der Pfeil nach oben oder unten geht
                 var epsilon = config.buffers.find((buffer) => buffer.identifier === 'Epsilon');
                 if (epsilon) {
-                    epsilon.data = Uint8Array.from({ length: 21 }, () => Math.random() > 0.5 ? 1 : 0);
+                    epsilon.data = Uint8Array.from({ length: 21 }, () => 1);
+                    //epsilon.data = Uint8Array.from({ length: 21 }, () => Math.random() > 0.5 ? 1 : 0);
                 }
 
                 var trees = ['Abies Grandis', 'Acer Campestre', 'Acer Platanoides',

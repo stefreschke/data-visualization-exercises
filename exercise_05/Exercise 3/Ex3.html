@@ -1,0 +1,188 @@
+<html>
+<header>
+    <style>
+        .line {
+            opacity: 0.5;
+        }
+
+        svg {
+            font: 10px sans-serif;
+        }
+
+        * {
+            font-family: 'sans serif';
+        }
+
+        .label {
+            font-size: 12pt;
+        }
+    </style>
+</header>
+
+<body>
+    <h1>I am your father!</h1>
+    <h4>Characters from the Star <del>Trek</del> Wars universe and their relations</h4>
+    Use the mouse to drag the whole graph or a single node. Use the scroll wheel to zoom in or out.<br>
+    Click a character to emphasize its relations. Hovering over a node reveals the name of the character.<br>    
+    <svg id="chart" width="1500" height="1000" />
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script>
+
+        var getSVGAttribute = (s) => {
+            const svg = document.getElementById("chart")
+            return svg.attributes[s].value
+        }
+
+        const width = getSVGAttribute("width")
+        const height = getSVGAttribute("height")
+        const neutralLinkColor = "#222"
+        const emphasizeLinkColor = "#f22"
+        const neutralNodeStrokeColor = "#fff"
+        const neutralNodeStrokeWidth = 1
+        const emphasizeNodeStrokeColor = "#f00"
+        const emphasizeNodeStrokeWidht = 2
+
+
+        var node, link
+
+        function clicked(index) {
+            const neutralColor = ""
+            let notesToColor = []
+            d3
+                .selectAll(".link")
+                .attr("stroke", d => {
+                    if (d.source.index == index) {
+                        notesToColor.push(d.target.index)
+                        return emphasizeLinkColor
+                    }
+                    else if (d.target.index == index) {
+                        notesToColor.push(d.source.index)
+                        return emphasizeLinkColor
+                    }
+                    return neutralColor
+                })
+
+            d3
+                .selectAll(".node")
+                .attr("stroke", d => {
+                    if (notesToColor.includes(d.index) || d.index == index) {
+                        return emphasizeNodeStrokeColor
+                    }
+                    return neutralNodeStrokeColor
+                })
+                .attr("stroke-width", d => {
+                    if (notesToColor.includes(d.index)) {
+                        return emphasizeNodeStrokeWidht
+                    } else if (d.index == index) {
+                        return 2 * emphasizeNodeStrokeWidht
+                    }
+                    return neutralNodeStrokeWidth
+                })
+        }
+
+        d3.json('Data/starwars-full-interactions.json').then((data) => {
+
+            let i = 0
+            let maxNodeValue = 0
+            // append id field to array
+            data.nodes.forEach(element => {
+                element["id"] = i++
+                maxNodeValue = Math.max(maxNodeValue, element["value"])
+            })
+
+            let maxLinkValue = 0
+            data.links.forEach(element => {
+                maxLinkValue = Math.max(maxLinkValue, element["value"])
+            })
+
+            const links = data.links.map(d => Object.create(d));
+            const nodes = data.nodes.map(d => Object.create(d));
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(100, height / 2));
+
+            const chart = d3
+                .select("#chart")
+                .append("g")
+                .attr("id", "container")
+
+            link = chart.append("g")
+                .attr("id", "links")
+                .attr("stroke", neutralLinkColor)
+                .selectAll("line")
+                .data(links)
+                .join("line")
+                .attr("source", d => d.source.index)
+                .attr("target", d => d.target.index)
+                .attr("class", "link")
+                .attr("stroke-opacity", d => 0.3 + d.value / maxLinkValue * 0.7)
+                .attr("stroke-width", d => Math.sqrt(d.value));
+
+            node = chart.append("g")
+                .attr("id", "nodes")
+                .attr("stroke", neutralNodeStrokeColor)
+                .attr("stroke-width", neutralNodeStrokeWidth)
+                .selectAll("circle")
+                .data(nodes)
+                .join("circle")
+                .attr("class", "node")
+                .attr("index", d => d.index)
+                .attr("r", d => 5 + d.value / maxNodeValue * 20)
+                .attr("fill", d => d.colour)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("click", d => clicked(d.index))
+
+            node.append("title")
+                .text(d => d.name);
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            })
+
+            function dragstarted(d) {
+                if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(d) {
+                d.fx = d3.event.x;
+                d.fy = d3.event.y;
+            }
+
+            function dragended(d) {
+                if (!d3.event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            var zoom_handler = d3.zoom()
+                .on("zoom", zoom_actions);
+
+            zoom_handler(d3.select("#chart"));
+
+            function zoom_actions() {
+                d3.select("#container").attr("transform", d3.event.transform)
+            }
+
+            zoom_handler.scaleTo( d3.select("#container"), 0.5)
+
+        })
+
+    </script>
+</body>
+
+</html>

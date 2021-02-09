@@ -81,7 +81,6 @@
 
       .station-circle {
         fill: black;
-        r: 1;
       }
     </style>
   </header>
@@ -118,11 +117,15 @@
       var luebeckPolygon;
       var data;
       var startingData;
+      var shopCircles;
+      var circleSpace;
 
       const offset = 0.05;
       var minLat, maxLat, minLon, maxLon;
       var lonScale, latScale;
       var oldLonScale, oldLatScale;
+
+      const radiusScale = d3.scaleLinear().range([0, 300]).domain([0, 1]);
 
       function updateScales() {
         oldLonScale = lonScale;
@@ -217,7 +220,7 @@
           updateDataSelection();
         } else useStartingBoundsAgain();
         updateLuebeck();
-        //updatePostStationCircles();
+        updateShops();
 
         if (selection != null) {
           noOp = true;
@@ -235,7 +238,7 @@
           .attr("points", (e) =>
             e.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
           )
-          .style("fill", (d) => "steelblue")
+          .style("fill", (d) => "#f1da5c")
           .style("opacity", "1");
       }
 
@@ -247,11 +250,43 @@
           );
       }
 
+      function renderShops(dataS) {
+        shopCircles = circleSpace
+          .selectAll("circle")
+          .data(dataS)
+          .join("circle")
+          .attr("class", "station-circle")
+          .attr("cy", (d) => latScale(d["lat"]))
+          .attr("cx", (d) => lonScale(d["lon"]))
+          .attr("location", (d) => d["store_name"])
+          .attr("lat", (d) => d["lat"])
+          .attr("lon", (d) => d["lon"])
+          .style("opacity", d => d["attr_indir"] + 0.3)
+          .style("stroke", "black")
+          .style("stroke-width", "1")
+          .style("fill", "#aa0000")
+          .attr("r", (d) => Math.sqrt(radiusScale(d["attr_dir"])));
+      }
+
+      function updateShops() {
+        shopCircles
+          .transition()
+          .attr("cy", (d) => latScale(d["lat"]))
+          .attr("cx", (d) => lonScale(d["lon"]));
+      }
+
+      const cols_to_clean = ["attr_dir", "attr_indir", "attr_all"];
       d3.csv("Data/stores_attr.csv").then(function (csvData) {
         csvData.forEach((d) => {
           let coord = d["geom"].split("(")[1].split(")")[0].split(" ");
           d["lat"] = coord[1];
           d["lon"] = coord[0];
+          cols_to_clean.forEach((col) => {
+            if (!d[col].startsWith("0.")) {
+              d[col] = "0." + d[col].replaceAll(".", "");
+            }
+            d[col] = +d[col];
+          });
         });
         fetchMinMaxLatLonFromData(csvData);
         data = csvData;
@@ -261,11 +296,11 @@
           brushSpace = svg.append("g").attr("id", "brush-space");
           circumfence = brushSpace.append("g").attr("id", "county-space");
           circleSpace = brushSpace.append("g").attr("id", "circle-space");
-          cellSpace = brushSpace.append("g").attr("id", "cell-space");
 
           renderLuebeck([
             jsonData["features"][0]["geometry"]["coordinates"][0],
           ]);
+          renderShops(data);
           brushSpace.call(brush.on("end", brushHandler));
         });
       });

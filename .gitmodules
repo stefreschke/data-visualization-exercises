@@ -1,3 +1,6 @@
 [submodule "exercise_04/Blatt/Exercise 2/source_repo"]
 	path = exercise_04/Blatt/Exercise 2/source_repo
 	url = https://github.com/cginternals/globjects.git
+[submodule "exercise_05/Exercise 5/source_repo"]
+	path = exercise_05/Exercise 5/source_repo
+	url = https://github.com/bitcoin/bitcoin.git

@@ -63,6 +63,7 @@
 
             .station-circle {
                 fill: black;
+                r: 1;
             }
         </style>
     </header>
@@ -70,10 +71,14 @@
     <body>
         <script src="//d3js.org/d3.v5.min.js"></script>
         <script src="https://unpkg.com/d3-delaunay@5"></script>
-        <h1>asdf</h1>
-        <h4>asdf</h4>
+        <h1>Active Postoffices in the USA</h1>
+        <h4>Each black dot is an active post office in the US. States and Counties are shown to showcase where the post offices are located.</h4>
+            <p>Move the slider to the right to gradually switch to a voronoi tessellation view with post offices as central points. <br> 
+            Move the slider to the left to gradually return to where you started. <br>
+            Snap a selection of post offices to display only them (and recalulate a new voronoi diagram with only them as central points). <br>
+            Click without a selection to return to the view of the whole US.</p>
         <div class="slidecontainer">
-            <input type="range" min="0" max="100" value="20" class="slider" id="myRange" />
+            <input type="range" min="0" max="80" value="0" class="slider" id="myRange" />
         </div>
         <script>
             var width = 1100;
@@ -95,6 +100,7 @@
             var voronoiCells;
             var countyPolygons;
             var postStationCircles;
+            var postStationCircleSize = 1;
             var transitionDuration = 1000;
             var startingBounds = [
                 [0, 0],
@@ -141,6 +147,7 @@
                 maxLon = startingBounds[1][1];
                 updateScales();
                 data = startingData;
+                postStationCircleSize = 1;
             }
 
             function isNotHirstorical(row) {
@@ -165,7 +172,7 @@
                             .join(' ')
                     )
                     .style('fill', (d) => color(stateCodes.indexOf(d.state_code)))
-                    .style('opacity', '.8');
+                    .style('opacity', '1');
             }
 
             function updateCountyPolygons() {
@@ -184,10 +191,9 @@
                     .data(data)
                     .join('circle')
                     .attr('class', 'station-circle')
-                    .attr('fill', 'green')
                     .attr('cx', (d) => d[0])
                     .attr('cy', (d) => d[1])
-                    .attr('r', 1);
+                    .attr("r", postStationCircleSize);
             }
 
             function updatePostStationCircles() {
@@ -204,7 +210,7 @@
                     .attr('class', 'voronoi-cell')
                     .attr('d', (d, i) => voronoi.renderCell(i))
                     .attr('fill', (d, i) => color(i))
-                    .style('opacity', '.2');
+                    .style('opacity', '0');
             }
 
             function updateVoronoiCells() {
@@ -250,6 +256,7 @@
                     maxLon = lonScale.invert(Math.min(selection[1][0], maxLonValue) - minLonValue);
                     maxLat = latScale.invert(Math.max(selection[0][1], minLatValue) - minLatValue);
                     minLat = latScale.invert(Math.min(selection[1][1], maxLatValue) - minLatValue);
+                    postStationCircleSize = 3;
                     updateScales();
                     updateDataSelection();
                 } else useStartingBoundsAgain();
@@ -257,7 +264,7 @@
                 updateVoronoiCells();
                 updatePostStationCircles();
 
-                if (selection == null) {
+                if (selection != null) {
                     noOp = true;
                     brushSpace.call(brush.clear);
                 }
@@ -298,8 +305,8 @@
                     cellSpace = brushSpace.append('g').attr('id', 'cell-space');
 
                     renderVoronoiCells();
-                    renderPostStationCircles();
                     renderCountyPolygons();
+                    renderPostStationCircles();
 
                     brushSpace.call(brush.on('end', brushHandler));
                 });

@@ -22,6 +22,12 @@
                     href="https://webgl-operate.org/about.html">webgl-operate.org/about.html</a>
                 &emsp;|&emsp;WebGL <span class="font-weight-bold">Operate</span>: <a
                     href="https://webgl-operate.org">webgl-operate.org</a></p>
+            <p>
+                This map visualizes the bitcoint repository. The lines of code in all .cpp, .h and .py files are mapped
+                to the base area of the cuboids. The height of the cuboids represents the number of commits on this file.
+                The color reperesents the number of different contributors that have commited to this file.
+                Therefore green stands for many different authors, while red stands for only a few authors.
+            </p>
         </header>
     </section>
     <section class="container mt-5">
@@ -510,10 +516,10 @@
                 // how many labels should be displayed
                 config.labels = {
                     innerNodeLayerRange: [0, 3],
-                    numTopInnerNodes: 10,
-                    numTopWeightNodes: 0,
+                    numTopInnerNodes: 0,
+                    numTopWeightNodes: 20,
                     numTopHeightNodes: 20,
-                    numTopColorNodes: 3
+                    numTopColorNodes: 10
                 };
 
                 config.geometry = {
@@ -560,7 +566,7 @@
 
                 //scheinbar die Fläche
                 var alpha = config.buffers.find((buffer) => buffer.identifier === 'Alpha');
-                
+
                 //scheinbar die Höhe 
                 var beta = config.buffers.find((buffer) => buffer.identifier === 'Beta');
 

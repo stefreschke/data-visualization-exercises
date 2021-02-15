@@ -1,6 +1,8 @@
 import os
 import json
 import subprocess
+import git
+import numpy as np
 
 edges = []
 nodes = {}
@@ -36,22 +38,19 @@ def traverse(path, counter):
                 continue
     return counter, append_edges
 
-print("Attenzione: Computing (several minutes) may take a while. Please be patient.")
+print("Attenzione: Computing may take a while (several minutes). Please be patient.")
 # Add source node
 nodes[0] = {'name': "source_repo", 'is_leave': False, 'path': "source_repo", 'loc': 0}
 # Traverse dir
 ret_counter, ret_edges = traverse("source_repo", 0)
-
+g = git.Git("source_repo")
 
 # Get number of commits
-run = os.popen('cd source_repo; git log --name-only --pretty=format: | sort | uniq -c')
-commit_count = run.read()
+log = g.log("--name-only", "--pretty=format:").split("\n")
+(files, counts) = np.unique(log, return_counts=True)
 commit_counts_by_path = {}
-for i, line in enumerate(commit_count.split("\n")):
-    splitted = line.strip().split(" ")
-    if len(splitted) != 2:
-        continue
-    commit_counts_by_path["source_repo/" + splitted[1]] = splitted[0]
+for line, count in zip(files, counts):
+    commit_counts_by_path["source_repo/" + line] = count
 
 commits_per_file = []
 for key in sorted(nodes):
@@ -69,9 +68,10 @@ authors_per_file = []
 for key in sorted(nodes):
     node = nodes[key]
     if node['is_leave']:
-        # run = os.popen("cd source_repo; git blame -p " + node['path'][12:] + " | grep -e '^author ' | sort | uniq | wc -l")
-        # authors_per_file.append(int(run.read().split("\n")[0]))
-        authors_per_file.append(0)
+        blame = g.blame("-p", node['path'][12:]).split("\n")
+        authors = [ author for author in blame if author.startswith("author ")]
+        num_authors = len(np.unique(authors))
+        authors_per_file.append(num_authors)
     else:
         authors_per_file.append(0)
 

@@ -1,0 +1,15 @@
+
+- Two visualization which are directly next to each other. The user needs time to realize that both visualizations are based on the map of Arizona.
+  In our case it took us 10 seconds to realize it.
+  Solution:
+    1. Merge visualizations into a single visualization with interaction techniques
+    2. Clear separation of both visualizations (e.g. by providing 2 instead of 1 diagram)
+    3. Make the area of Arizona in the left visualization clearer (e.g. by providing a white-line with its border)
+
+- Missing legend: It is unclear what the specific color hues mean.
+  Solution: Add legend.
+
+- No geographic reference is given: If we were living in a town in Arizona, we could not easily access the rain gauge next to our village,
+  it is assumed that every user of the visualization knows how to apply it
+  Solution:
+   - add geological reference (e.g. the capital of Arizona and bigger cities in it)

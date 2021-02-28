@@ -73,7 +73,7 @@
       }
 
       .voronoi-cell,
-      .county-polygon {
+      .luebeck-polygon {
         stroke: black;
         stroke-opacity: 0.2;
         stroke-width: 1;
@@ -171,7 +171,7 @@
         .append("svg")
         .attr("width", width)
         .attr("height", height);
-      var brush = d3.brush();
+      var brush = d3.brush().on("end", brushHandler);
 
       function updateDataSelection() {
         data = data.filter(
@@ -234,7 +234,7 @@
           .data(dataL)
           .enter()
           .append("polygon")
-          .attr("class", "county-polygon")
+          .attr("class", "luebeck-polygon")
           .attr("points", (e) =>
             e.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
           )
@@ -294,23 +294,19 @@
 
         d3.json("Data/Luebeck.geojson").then(function (jsonData) {
           brushSpace = svg.append("g").attr("id", "brush-space");
-          circumfence = brushSpace.append("g").attr("id", "county-space");
+          circumfence = brushSpace.append("g").attr("id", "luebeck-space");
           circleSpace = brushSpace.append("g").attr("id", "circle-space");
 
           renderLuebeck([
             jsonData["features"][0]["geometry"]["coordinates"][0],
           ]);
           renderShops(data);
-          brushSpace.call(brush.on("end", brushHandler));
+          brushSpace.call(brush);
         });
       });
 
       function colorRedraw(voronoiValue) {
-        let counties = 100 - voronoiValue;
-        voronoiValue /= 100;
-        counties /= 100;
-        voronoiCells.style("opacity", voronoiValue);
-        countyPolygons.style("opacity", counties);
+
       }
 
       slider.oninput = () => colorRedraw(slider.value);

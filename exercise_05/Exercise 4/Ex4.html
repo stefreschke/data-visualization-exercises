@@ -1,315 +1,342 @@
 <html>
-  <header>
-    <style>
-      .line {
-        opacity: 0.5;
-      }
+<header>
+  <style>
+    .line {
+      opacity: 0.5;
+    }
 
-      svg {
-        font: 10px sans-serif;
-      }
+    svg {
+      font: 10px sans-serif;
+    }
 
-      * {
-        font-family: "sans serif";
-      }
+    * {
+      font-family: "sans serif";
+    }
 
-      .label {
-        font-size: 12pt;
-      }
+    .label {
+      font-size: 12pt;
+    }
 
-      /* Slider code taken from https://www.w3schools.com/howto/howto_js_rangeslider.asp*/
-      .slidecontainer {
-        width: 1100;
-        /* Width of the outside container */
-      }
+    /* Slider code taken from https://www.w3schools.com/howto/howto_js_rangeslider.asp*/
+    .slidecontainer {
+      width: 1100;
+      /* Width of the outside container */
+    }
 
-      .slider {
-        -webkit-appearance: none;
-        /* Override default CSS styles */
-        appearance: none;
-        width: 100%;
-        /* Full-width */
-        height: 25px;
-        /* Specified height */
-        background: #d3d3d3;
-        /* Grey background */
-        outline: none;
-        /* Remove outline */
-        opacity: 0.7;
-        /* Set transparency (for mouse-over effects on hover) */
-        -webkit-transition: 0.2s;
-        /* 0.2 seconds transition on hover */
-        transition: opacity 0.2s;
-      }
+    .slider {
+      -webkit-appearance: none;
+      /* Override default CSS styles */
+      appearance: none;
+      width: 100%;
+      /* Full-width */
+      height: 25px;
+      /* Specified height */
+      background: #d3d3d3;
+      /* Grey background */
+      outline: none;
+      /* Remove outline */
+      opacity: 0.7;
+      /* Set transparency (for mouse-over effects on hover) */
+      -webkit-transition: 0.2s;
+      /* 0.2 seconds transition on hover */
+      transition: opacity 0.2s;
+    }
 
-      .slider:hover {
-        opacity: 1;
-        /* Fully shown on mouse-over */
-      }
+    .slider:hover {
+      opacity: 1;
+      /* Fully shown on mouse-over */
+    }
 
-      .slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        /* Override default look */
-        appearance: none;
-        width: 25px;
-        /* Set a specific slider handle width */
-        height: 25px;
-        /* Slider handle height */
-        background: grey;
-        /* Green background */
-        cursor: pointer;
-        /* Cursor on hover */
-      }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      /* Override default look */
+      appearance: none;
+      width: 25px;
+      /* Set a specific slider handle width */
+      height: 25px;
+      /* Slider handle height */
+      background: grey;
+      /* Green background */
+      cursor: pointer;
+      /* Cursor on hover */
+    }
 
-      .slider::-moz-range-thumb {
-        width: 25px;
-        /* Set a specific slider handle width */
-        height: 25px;
-        /* Slider handle height */
-        background: grey;
-        /* Green background */
-        cursor: pointer;
-        /* Cursor on hover */
-      }
+    .slider::-moz-range-thumb {
+      width: 25px;
+      /* Set a specific slider handle width */
+      height: 25px;
+      /* Slider handle height */
+      background: grey;
+      /* Green background */
+      cursor: pointer;
+      /* Cursor on hover */
+    }
 
-      .voronoi-cell,
-      .luebeck-polygon {
-        stroke: black;
-        stroke-opacity: 0.2;
-        stroke-width: 1;
-      }
+    .voronoi-cell,
+    .luebeck-polygon {
+      stroke: black;
+      stroke-opacity: 0.2;
+      stroke-width: 1;
+    }
 
-      .station-circle {
-        fill: black;
-      }
-    </style>
-  </header>
+    .station-circle {
+      fill: black;
+    }
+  </style>
+</header>
 
-  <body>
-    <script src="//d3js.org/d3.v5.min.js"></script>
-    <script src="https://unpkg.com/d3-delaunay@5"></script>
-    <h1>Active Postoffices in the USA</h1>
-    <div class="slidecontainer">
-      <input
-        type="range"
-        min="0"
-        max="80"
-        value="0"
-        class="slider"
-        id="myRange"
-      />
-    </div>
+<body>
+  <script src="//d3js.org/d3.v5.min.js"></script>
+  <script src="https://unpkg.com/d3-delaunay@5"></script>
+  <h1>Attractivity of Stores in Luebeck</h1>
+  <h3></h3>
+  <div class="slidecontainer">
+    <input type="range" min="0" max="100" value="0" class="slider" id="myRange" />
+  </div>
 
-    <script>
-      var width = 1100;
-      var slider = document.getElementById("myRange");
-      d3.select("slider").style("width", width);
-      // Update the current slider value (each time you drag the slider handle)
-      var height = 650;
-      var noOp = false;
-      var transitionDuration = 1000;
-      var startingBounds = [
-        [0, 0],
-        [100, 100],
+  <script>
+    var width = 1100;
+    var slider = document.getElementById("myRange");
+    d3.select("slider").style("width", width);
+    // Update the current slider value (each time you drag the slider handle)
+    var height = 650;
+    var noOp = false;
+    var transitionDuration = 1000;
+    var startingBounds = [
+      [0, 0],
+      [100, 100],
+    ];
+
+    const baseCircleOpacity = 0.2;
+    const availableOpactiy = 1 - baseCircleOpacity;
+
+    var circumfence;
+    var luebeckPolygon;
+    var data;
+    var startingData;
+    var shopCircles;
+    var circleSpace;
+
+    const offset = 0.05;
+    var minLat, maxLat, minLon, maxLon;
+    var lonScale, latScale;
+    var oldLonScale, oldLatScale;
+
+    const radiusScale = d3.scaleLinear().range([0, 500]).domain([0, 1]);
+    const scaleIndirAttr = d3.scaleLinear().range([0, 1]).domain([0, 1]);
+    const scaleDirAttr = d3.scaleLinear().range([0, 1]).domain([0, 1]);
+    const scaleCurrent = d3.scaleLinear().range([0, 1]).domain([0, 100])
+
+
+    function updateScales() {
+      oldLonScale = lonScale;
+      oldLatScale = latScale;
+      lonScale = d3.scaleLinear().domain([maxLon, minLon]).range([width, 0]);
+      latScale = d3.scaleLinear().domain([maxLat, minLat]).range([0, height]);
+    }
+
+    var transform = (list) => {
+      let result = [];
+      result.push(lonScale(list[1]));
+      result.push(latScale(list[0]));
+      return result;
+    };
+
+    function createDomainList(columnName, csvData) {
+      var attractivity = csvData.map(d => d[columnName]);
+      maxAttr = d3.max(attractivity);
+      minAttr = d3.min(attractivity);
+      radiusScale.domain([minAttr, maxAttr]);
+      console.log(minAttr);
+      console.log(maxAttr);
+      return [minAttr, maxAttr];
+    }
+
+    function singleColorRedraw(d, value) {
+      let counterValue = 100 - value;
+      let dirAttr = scaleDirAttr(d["attr_dir"]) * value;
+      let indirAttr = scaleIndirAttr(d["attr_indir"]) * counterValue;
+      return scaleCurrent(dirAttr + indirAttr);
+    }
+
+    function fetchMinMaxLatLonFromData(data) {
+      let lats = data.map((e) => +e.lat);
+      let lons = data.map((e) => +e.lon);
+      minLat = d3.min(lats) - offset;
+      minLon = d3.min(lons) - offset;
+      maxLat = d3.max(lats) + offset;
+      maxLon = d3.max(lons) + offset;
+      startingBounds = [
+        [minLat, maxLat],
+        [minLon, maxLon],
       ];
+      updateScales();
+    }
 
-      var circumfence;
-      var luebeckPolygon;
-      var data;
-      var startingData;
-      var shopCircles;
-      var circleSpace;
+    function useStartingBoundsAgain() {
+      minLat = startingBounds[0][0];
+      maxLat = startingBounds[0][1];
+      minLon = startingBounds[1][0];
+      maxLon = startingBounds[1][1];
+      updateScales();
+      data = startingData;
+      postStationCircleSize = 1;
+    }
 
-      const offset = 0.05;
-      var minLat, maxLat, minLon, maxLon;
-      var lonScale, latScale;
-      var oldLonScale, oldLatScale;
+    var color = d3.scaleOrdinal().range(d3.schemeTableau10);
+    var svg = d3
+      .select("body")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+    var brush = d3.brush().on("end", brushHandler);
 
-      const radiusScale = d3.scaleLinear().range([0, 300]).domain([0, 1]);
+    function updateDataSelection() {
+      data = data.filter(
+        (d) =>
+          oldLonScale.invert(d[0]) > minLon &&
+          oldLonScale.invert(d[0]) < maxLon &&
+          oldLatScale.invert(d[1]) > minLat &&
+          oldLatScale.invert(d[1]) < maxLat
+      );
+      data = data.map((d) => [
+        lonScale(oldLonScale.invert(d[0])),
+        latScale(oldLatScale.invert(d[1])),
+      ]);
+    }
 
-      function updateScales() {
-        oldLonScale = lonScale;
-        oldLatScale = latScale;
-        lonScale = d3.scaleLinear().domain([maxLon, minLon]).range([width, 0]);
-        latScale = d3.scaleLinear().domain([maxLat, minLat]).range([0, height]);
+    function brushHandler() {
+      console.log("reached");
+      // reused code from ex2/ex1d
+      if (noOp) {
+        noOp = false;
+        return;
       }
 
-      var transform = (list) => {
-        let result = [];
-        result.push(lonScale(list[1]));
-        result.push(latScale(list[0]));
-        return result;
-      };
+      selection = d3.brushSelection(this);
+      const minLonValue = 0;
+      const minLatValue = 0;
+      const maxLonValue = width;
+      const maxLatValue = height;
 
-      function fetchMinMaxLatLonFromData(data) {
-        let lats = data.map((e) => +e.lat);
-        let lons = data.map((e) => +e.lon);
-        minLat = d3.min(lats) - offset;
-        minLon = d3.min(lons) - offset;
-        maxLat = d3.max(lats) + offset;
-        maxLon = d3.max(lons) + offset;
-        startingBounds = [
-          [minLat, maxLat],
-          [minLon, maxLon],
-        ];
-        updateScales();
-      }
-
-      function useStartingBoundsAgain() {
-        minLat = startingBounds[0][0];
-        maxLat = startingBounds[0][1];
-        minLon = startingBounds[1][0];
-        maxLon = startingBounds[1][1];
-        updateScales();
-        data = startingData;
-        postStationCircleSize = 1;
-      }
-
-      var color = d3.scaleOrdinal().range(d3.schemeTableau10);
-      var svg = d3
-        .select("body")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-      var brush = d3.brush().on("end", brushHandler);
-
-      function updateDataSelection() {
-        data = data.filter(
-          (d) =>
-            oldLonScale.invert(d[0]) > minLon &&
-            oldLonScale.invert(d[0]) < maxLon &&
-            oldLatScale.invert(d[1]) > minLat &&
-            oldLatScale.invert(d[1]) < maxLat
+      console.log(selection);
+      if (selection != null) {
+        minLon = lonScale.invert(
+          Math.max(selection[0][0], minLonValue) - minLonValue
         );
-        data = data.map((d) => [
-          lonScale(oldLonScale.invert(d[0])),
-          latScale(oldLatScale.invert(d[1])),
-        ]);
+        maxLon = lonScale.invert(
+          Math.min(selection[1][0], maxLonValue) - minLonValue
+        );
+        maxLat = latScale.invert(
+          Math.max(selection[0][1], minLatValue) - minLatValue
+        );
+        minLat = latScale.invert(
+          Math.min(selection[1][1], maxLatValue) - minLatValue
+        );
+        postStationCircleSize = 3;
+        updateScales();
+        updateDataSelection();
+      } else useStartingBoundsAgain();
+      updateLuebeck();
+      updateShops();
+
+      if (selection != null) {
+        noOp = true;
+        brushSpace.call(brush.clear);
       }
+    }
 
-      function brushHandler() {
-        console.log("reached");
-        // reused code from ex2/ex1d
-        if (noOp) {
-          noOp = false;
-          return;
-        }
+    function renderLuebeck(dataL) {
+      luebeckPolygon = circumfence
+        .selectAll("polygon")
+        .data(dataL)
+        .enter()
+        .append("polygon")
+        .attr("class", "luebeck-polygon")
+        .attr("points", (e) =>
+          e.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
+        )
+        .style("fill", (d) => "#f1da5c")
+        .style("opacity", "1");
+    }
 
-        selection = d3.brushSelection(this);
-        const minLonValue = 0;
-        const minLatValue = 0;
-        const maxLonValue = width;
-        const maxLatValue = height;
+    function updateLuebeck() {
+      luebeckPolygon
+        .transition()
+        .attr("points", (d) =>
+          d.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
+        );
+    }
 
-        console.log(selection);
-        if (selection != null) {
-          minLon = lonScale.invert(
-            Math.max(selection[0][0], minLonValue) - minLonValue
-          );
-          maxLon = lonScale.invert(
-            Math.min(selection[1][0], maxLonValue) - minLonValue
-          );
-          maxLat = latScale.invert(
-            Math.max(selection[0][1], minLatValue) - minLatValue
-          );
-          minLat = latScale.invert(
-            Math.min(selection[1][1], maxLatValue) - minLatValue
-          );
-          postStationCircleSize = 3;
-          updateScales();
-          updateDataSelection();
-        } else useStartingBoundsAgain();
-        updateLuebeck();
-        updateShops();
+    function renderShops(dataS) {
+      shopCircles = circleSpace
+        .selectAll("circle")
+        .data(dataS)
+        .join("circle")
+        .attr("class", "station-circle")
+        .attr("cy", (d) => latScale(d["lat"]))
+        .attr("cx", (d) => lonScale(d["lon"]))
+        .attr("location", (d) => d["store_name"])
+        .attr("lat", (d) => d["lat"])
+        .attr("lon", (d) => d["lon"])
+        .style("opacity", d => singleColorRedraw(d, 0) * availableOpactiy + baseCircleOpacity)
+        .style("stroke", "black")
+        .style("stroke-width", "1")
+        .style("fill", "#aa0000")
+        .attr("r", (d) => Math.sqrt(radiusScale(d["attr_all"])));
+    }
 
-        if (selection != null) {
-          noOp = true;
-          brushSpace.call(brush.clear);
-        }
-      }
+    function updateShops() {
+      shopCircles
+        .transition()
+        .attr("cy", (d) => latScale(d["lat"]))
+        .attr("cx", (d) => lonScale(d["lon"]));
+    }
 
-      function renderLuebeck(dataL) {
-        luebeckPolygon = circumfence
-          .selectAll("polygon")
-          .data(dataL)
-          .enter()
-          .append("polygon")
-          .attr("class", "luebeck-polygon")
-          .attr("points", (e) =>
-            e.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
-          )
-          .style("fill", (d) => "#f1da5c")
-          .style("opacity", "1");
-      }
-
-      function updateLuebeck() {
-        luebeckPolygon
-          .transition()
-          .attr("points", (d) =>
-            d.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
-          );
-      }
-
-      function renderShops(dataS) {
-        shopCircles = circleSpace
-          .selectAll("circle")
-          .data(dataS)
-          .join("circle")
-          .attr("class", "station-circle")
-          .attr("cy", (d) => latScale(d["lat"]))
-          .attr("cx", (d) => lonScale(d["lon"]))
-          .attr("location", (d) => d["store_name"])
-          .attr("lat", (d) => d["lat"])
-          .attr("lon", (d) => d["lon"])
-          .style("opacity", d => d["attr_indir"] + 0.3)
-          .style("stroke", "black")
-          .style("stroke-width", "1")
-          .style("fill", "#aa0000")
-          .attr("r", (d) => Math.sqrt(radiusScale(d["attr_dir"])));
-      }
-
-      function updateShops() {
-        shopCircles
-          .transition()
-          .attr("cy", (d) => latScale(d["lat"]))
-          .attr("cx", (d) => lonScale(d["lon"]));
-      }
-
-      const cols_to_clean = ["attr_dir", "attr_indir", "attr_all"];
-      d3.csv("Data/stores_attr.csv").then(function (csvData) {
-        csvData.forEach((d) => {
-          let coord = d["geom"].split("(")[1].split(")")[0].split(" ");
-          d["lat"] = coord[1];
-          d["lon"] = coord[0];
-          cols_to_clean.forEach((col) => {
-            if (!d[col].startsWith("0.")) {
-              d[col] = "0." + d[col].replaceAll(".", "");
-            }
-            d[col] = +d[col];
-          });
-        });
-        fetchMinMaxLatLonFromData(csvData);
-        data = csvData;
-        startingData = data;
-
-        d3.json("Data/Luebeck.geojson").then(function (jsonData) {
-          brushSpace = svg.append("g").attr("id", "brush-space");
-          circumfence = brushSpace.append("g").attr("id", "luebeck-space");
-          circleSpace = brushSpace.append("g").attr("id", "circle-space");
-
-          renderLuebeck([
-            jsonData["features"][0]["geometry"]["coordinates"][0],
-          ]);
-          renderShops(data);
-          brushSpace.call(brush);
+    const cols_to_clean = ["attr_dir", "attr_indir", "attr_all"];
+    d3.csv("Data/stores_attr.csv").then(function (csvData) {
+      csvData.forEach((d) => {
+        let coord = d["geom"].split("(")[1].split(")")[0].split(" ");
+        d["lat"] = coord[1];
+        d["lon"] = coord[0];
+        cols_to_clean.forEach((col) => {
+          if (!d[col].startsWith("0.")) {
+            d[col] = "0." + d[col].replaceAll(".", "");
+          }
+          d[col] = +d[col];
         });
       });
+      scaleDirAttr.domain(createDomainList("attr_dir", csvData));
+      scaleIndirAttr.domain(createDomainList("attr_indir", csvData));
 
-      function colorRedraw(voronoiValue) {
 
-      }
 
-      slider.oninput = () => colorRedraw(slider.value);
-    </script>
-  </body>
+
+      fetchMinMaxLatLonFromData(csvData);
+      data = csvData;
+      startingData = data;
+
+      d3.json("Data/Luebeck.geojson").then(function (jsonData) {
+        brushSpace = svg.append("g").attr("id", "brush-space");
+        circumfence = brushSpace.append("g").attr("id", "luebeck-space");
+        circleSpace = brushSpace.append("g").attr("id", "circle-space");
+
+        renderLuebeck([
+          jsonData["features"][0]["geometry"]["coordinates"][0],
+        ]);
+        renderShops(data);
+        brushSpace.call(brush);
+      });
+    });
+
+    function colorRedraw(sliderValue) {
+      shopCircles
+        .transition(1)
+        .style("opacity", d => singleColorRedraw(d, sliderValue) * availableOpactiy + baseCircleOpacity);
+    }
+
+    slider.oninput = () => colorRedraw(slider.value);
+  </script>
+</body>
+
 </html>

@@ -87,9 +87,13 @@
 
 <body>
   <script src="//d3js.org/d3.v5.min.js"></script>
-  <script src="https://unpkg.com/d3-delaunay@5"></script>
   <h1>Attractivity of Stores in Luebeck</h1>
-  <h3></h3>
+  <h4>
+    Presents stores in Luebeck by their activity. Total actractivity is visible by the size of the circles.<br>
+    Hower over a circle to retrieve the name of the store. Snap inorder to examine a specific part of Luebeck more
+    closely. <br>
+    Move the slider to switch focus between indirect attractivity (right) and direct attractivity (left).
+  </h4>
   <div class="slidecontainer">
     <input type="range" min="0" max="100" value="0" class="slider" id="myRange" />
   </div>
@@ -122,10 +126,11 @@
     var lonScale, latScale;
     var oldLonScale, oldLatScale;
 
-    const radiusScale = d3.scaleLinear().range([0, 500]).domain([0, 1]);
+    const radiusScale = d3.scaleLinear().range([10, 500]).domain([0, 1]);
     const scaleIndirAttr = d3.scaleLinear().range([0, 1]).domain([0, 1]);
     const scaleDirAttr = d3.scaleLinear().range([0, 1]).domain([0, 1]);
-    const scaleCurrent = d3.scaleLinear().range([0, 1]).domain([0, 100])
+    const scaleCurrent = d3.scaleLinear().range([baseCircleOpacity, 1]).domain([0, 100])
+    const radiusScale100 = d3.scaleLinear().range([10, 500]).domain([0, 100])
 
 
     function updateScales() {
@@ -147,8 +152,6 @@
       maxAttr = d3.max(attractivity);
       minAttr = d3.min(attractivity);
       radiusScale.domain([minAttr, maxAttr]);
-      console.log(minAttr);
-      console.log(maxAttr);
       return [minAttr, maxAttr];
     }
 
@@ -206,8 +209,6 @@
     }
 
     function brushHandler() {
-      console.log("reached");
-      // reused code from ex2/ex1d
       if (noOp) {
         noOp = false;
         return;
@@ -218,8 +219,6 @@
       const minLatValue = 0;
       const maxLonValue = width;
       const maxLatValue = height;
-
-      console.log(selection);
       if (selection != null) {
         minLon = lonScale.invert(
           Math.max(selection[0][0], minLonValue) - minLonValue
@@ -256,7 +255,7 @@
         .attr("points", (e) =>
           e.map((d) => [lonScale(d[0]), latScale(d[1])].join(",")).join(" ")
         )
-        .style("fill", (d) => "#f1da5c")
+        .style("fill", (d) => "cyan")
         .style("opacity", "1");
     }
 
@@ -279,11 +278,12 @@
         .attr("location", (d) => d["store_name"])
         .attr("lat", (d) => d["lat"])
         .attr("lon", (d) => d["lon"])
-        .style("opacity", d => singleColorRedraw(d, 0) * availableOpactiy + baseCircleOpacity)
+        .style("opacity", d => singleColorRedraw(d, 0))
         .style("stroke", "black")
         .style("stroke-width", "1")
         .style("fill", "#aa0000")
         .attr("r", (d) => Math.sqrt(radiusScale(d["attr_all"])));
+      shopCircles.append("title").text(d => d["store_name"]);
     }
 
     function updateShops() {
@@ -317,22 +317,23 @@
       startingData = data;
 
       d3.json("Data/Luebeck.geojson").then(function (jsonData) {
+        circumfence = svg.append("g").attr("id", "luebeck-space");
         brushSpace = svg.append("g").attr("id", "brush-space");
-        circumfence = brushSpace.append("g").attr("id", "luebeck-space");
-        circleSpace = brushSpace.append("g").attr("id", "circle-space");
+        brushSpace.call(brush);
+
+        circleSpace = svg.append("g").attr("id", "circle-space");
 
         renderLuebeck([
           jsonData["features"][0]["geometry"]["coordinates"][0],
         ]);
         renderShops(data);
-        brushSpace.call(brush);
       });
     });
 
     function colorRedraw(sliderValue) {
       shopCircles
         .transition(1)
-        .style("opacity", d => singleColorRedraw(d, sliderValue) * availableOpactiy + baseCircleOpacity);
+        .style("opacity", d => singleColorRedraw(d, sliderValue));
     }
 
     slider.oninput = () => colorRedraw(slider.value);
